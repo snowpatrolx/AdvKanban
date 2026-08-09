@@ -1,0 +1,42 @@
+.task-detail-page {
+  padding-top: 12px;
+}
+
+.task-form {
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.task-timestamps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-light);
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.task-form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.knowledge-textarea {
+  min-height: 200px;
+}

@@ -1,0 +1,51 @@
+.data-stats-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.data-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  font-size: 15px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.data-stat-row:last-child {
+  border-bottom: none;
+}
+
+.data-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.data-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.data-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.data-action-btn {
+  margin-bottom: 10px;
+}
+
+.data-action-btn:last-child {
+  margin-bottom: 0;
+}
+
+.data-danger-card {
+  border: 1px solid rgba(231, 76, 60, 0.2);
+}

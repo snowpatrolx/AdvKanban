@@ -1,0 +1,53 @@
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  background: var(--color-card);
+  width: 100%;
+  max-width: 480px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 20px;
+  padding-bottom: calc(20px + var(--safe-bottom));
+  animation: slideUp 0.3s ease;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.modal-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.modal-close {
+  font-size: 18px;
+  color: var(--color-text-light);
+  padding: 4px 8px;
+}
+
+.confirm-message {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}

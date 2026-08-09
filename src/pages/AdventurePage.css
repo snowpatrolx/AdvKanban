@@ -1,0 +1,281 @@
+.adventure-page {
+  padding-top: 12px;
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px);
+}
+
+/* 页面标题 */
+.adventure-page-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.adventure-page-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adventure-page-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* 当前章节卡片 */
+.adventure-current-card {
+  background: linear-gradient(135deg, #2d3436, #1e272e);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 16px;
+  color: #fff;
+}
+
+.adventure-current-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.adventure-chapter-tag {
+  background: var(--color-primary);
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.adventure-area {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.adventure-current-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+/* Boss 区域 */
+.adventure-boss-section {
+  background: rgba(231, 76, 60, 0.15);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.adventure-boss-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.adventure-boss-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ff7675;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.adventure-boss-hp {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ff7675;
+}
+
+.adventure-boss-bar {
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.adventure-boss-hint {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 8px;
+}
+
+/* 条件区域 */
+.adventure-condition {
+  background: rgba(108, 92, 231, 0.15);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.adventure-condition-text {
+  font-size: 13px;
+  margin-bottom: 8px;
+  opacity: 0.9;
+}
+
+.adventure-condition .progress-bar {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.adventure-condition-progress {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 6px;
+  text-align: right;
+}
+
+.adventure-story-text {
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.85;
+}
+
+/* Tab */
+.adventure-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  box-shadow: var(--shadow-sm);
+}
+
+.adventure-tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  transition: all 0.2s;
+}
+
+.adventure-tab.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* 地图 */
+.adventure-map {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.adventure-map-node {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.adventure-map-node.locked {
+  opacity: 0.5;
+}
+
+.adventure-map-node.current {
+  border: 2px solid var(--color-primary);
+}
+
+.adventure-map-marker {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  border-radius: 50%;
+}
+
+.adventure-map-node.current .adventure-map-marker {
+  background: rgba(108, 92, 231, 0.15);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.adventure-map-info {
+  flex: 1;
+}
+
+.adventure-map-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.adventure-map-area {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.adventure-map-boss {
+  font-size: 12px;
+  color: var(--color-danger);
+  margin-top: 4px;
+}
+
+.adventure-map-locked {
+  font-size: 12px;
+  color: var(--color-text-light);
+  margin-top: 4px;
+}
+
+.adventure-map-current-badge {
+  background: var(--color-primary);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* 日志 */
+.adventure-log-section {
+  margin-bottom: 16px;
+}
+
+.adventure-log-chapter {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.adventure-log-item {
+  background: var(--color-card);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  box-shadow: var(--shadow-sm);
+}
+
+.adventure-log-time {
+  font-size: 11px;
+  color: var(--color-text-light);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.adventure-log-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text);
+}

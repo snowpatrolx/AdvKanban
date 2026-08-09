@@ -1,0 +1,402 @@
+.home-kanban-page {
+  padding-top: 12px;
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 80px);
+}
+
+/* 顶部工具栏 */
+.hk-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.hk-search-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hk-search-icon {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+}
+
+.hk-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 38px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.hk-search-input:focus {
+  border-color: var(--color-primary);
+}
+
+.hk-view-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--color-card);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  box-shadow: var(--shadow-sm);
+}
+
+.hk-view-btn {
+  padding: 7px 10px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.hk-view-btn.active {
+  background: var(--color-primary);
+}
+
+/* 统计条 */
+.hk-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.hk-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.hk-stat-divider {
+  color: var(--color-border);
+}
+
+/* 分类筛选 */
+.home-category-filter {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s;
+}
+
+.category-chip.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.category-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* 任务区域 */
+.task-section {
+  margin-bottom: 16px;
+}
+
+.task-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--color-text);
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--color-text-light);
+}
+
+.empty-state-icon-flat {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 任务卡片 - 列表 */
+.task-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s;
+}
+
+.task-card:active {
+  transform: scale(0.98);
+}
+
+.task-card.overdue {
+  border-left: 3px solid var(--color-danger);
+}
+
+.task-checkbox {
+  padding: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-circle {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.task-checkbox:active .checkbox-circle {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.task-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-card-title {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.task-card-title.done-text {
+  text-decoration: line-through;
+  color: var(--color-text-light);
+}
+
+.task-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.task-due {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+.overdue-text {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+/* ===== 看板视图 - 自适应屏幕尺寸 ===== */
+.kanban-board {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  min-height: calc(100vh - 240px);
+}
+
+.kanban-column {
+  flex: 1 1 0;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 220px);
+}
+
+@media (max-width: 380px) {
+  .kanban-column {
+    min-width: 90px;
+  }
+}
+
+@media (min-width: 768px) {
+  .kanban-column {
+    flex: 0 0 240px;
+  }
+}
+
+.kanban-column-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  flex-shrink: 0;
+}
+
+.kanban-column-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.kanban-column-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.kanban-column-count {
+  font-size: 11px;
+  color: var(--color-text-light);
+  background: var(--color-card);
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+.kanban-column-body {
+  flex: 1;
+  padding: 0 6px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 100px;
+  overflow-y: auto;
+}
+
+.kanban-empty {
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-text-light);
+  padding: 24px 8px;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.kanban-column.drag-over {
+  background: rgba(108, 92, 231, 0.08);
+}
+
+/* 看板卡片 */
+.kanban-card {
+  background: var(--color-card);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  cursor: grab;
+  transition: transform 0.15s, box-shadow 0.15s;
+  touch-action: none;
+}
+
+.kanban-card:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.kanban-card.dragging-active {
+  opacity: 0.3;
+}
+
+.kanban-card.dragging {
+  opacity: 0.9;
+  box-shadow: var(--shadow-lg);
+  transform: rotate(2deg);
+}
+
+.kanban-card-priority-bar {
+  height: 3px;
+  width: 100%;
+}
+
+.kanban-card-content {
+  padding: 8px 10px;
+}
+
+.kanban-card-title {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.kanban-card-title.done {
+  text-decoration: line-through;
+  color: var(--color-text-light);
+}
+
+.kanban-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.kanban-card-due {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+}
+
+/* 悬浮按钮 */
+.fab {
+  position: fixed;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px);
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  transition: transform 0.2s;
+}
+
+.fab:active {
+  transform: scale(0.9);
+}
+
+/* 快速添加表单 */
+.quick-add-form {
+  padding-bottom: 4px;
+}
+
+.quick-add-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
