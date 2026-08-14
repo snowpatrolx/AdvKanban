@@ -400,3 +400,94 @@
   justify-content: flex-end;
   margin-top: 8px;
 }
+
+/* 重复任务图标 */
+.task-repeat-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+/* 子任务标签 */
+.tag-subtask {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+/* 子任务预览（默认显示第一个未完成子任务） */
+.subtask-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.subtask-preview-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.subtask-preview-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 子任务列表（展开时） */
+.subtask-list {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.subtask-check {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.subtask-check.done {
+  border: none;
+}
+
+.subtask-title {
+  color: var(--color-text);
+}
+
+.subtask-title.done-text {
+  text-decoration: line-through;
+  color: var(--color-text-light);
+}

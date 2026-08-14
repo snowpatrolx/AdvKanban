@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
-import { IconBack, IconTrash } from '../components/common/Icons';
+import { IconBack, IconTrash, IconLink } from '../components/common/Icons';
 import './TaskDetailPage.css';
 
 export default function KnowledgeDetailPage() {
@@ -18,6 +18,7 @@ export default function KnowledgeDetailPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [link, setLink] = useState('');
   const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => {
@@ -25,16 +26,24 @@ export default function KnowledgeDetailPage() {
       setTitle(existing.title);
       setContent(existing.content);
       setCategoryId(existing.categoryId || '');
+      setLink(existing.link || '');
     }
   }, [existing]);
 
   const handleSave = () => {
     if (!title.trim()) return;
+    // 简单验证 URL 格式
+    let cleanLink = link.trim();
+    if (cleanLink && !cleanLink.match(/^https?:\/\//)) {
+      cleanLink = 'https://' + cleanLink;
+    }
+
     if (isNew) {
       addKnowledge({
         title: title.trim(),
         content: content.trim(),
         categoryId: categoryId || null,
+        link: cleanLink,
       });
       addToast({ icon: '★', title: '知识已创建', subtitle: '+5 经验值' });
     } else {
@@ -42,6 +51,7 @@ export default function KnowledgeDetailPage() {
         title: title.trim(),
         content: content.trim(),
         categoryId: categoryId || null,
+        link: cleanLink,
       });
       addToast({ icon: '✓', title: '知识已保存' });
     }
@@ -93,6 +103,20 @@ export default function KnowledgeDetailPage() {
           />
         </div>
 
+        {/* 文章链接 */}
+        <div className="form-group">
+          <label className="form-label">
+            <IconLink size={16} color="var(--color-primary)" /> 文章链接
+          </label>
+          <input
+            className="form-input"
+            placeholder="https://example.com/article"
+            value={link}
+            onChange={e => setLink(e.target.value)}
+            type="url"
+          />
+        </div>
+
         <div className="form-group">
           <label className="form-label">分类</label>
           <select className="form-select" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
@@ -100,6 +124,18 @@ export default function KnowledgeDetailPage() {
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
+
+        {existing && existing.link && (
+          <a
+            href={existing.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="knowledge-link-preview"
+          >
+            <IconLink size={16} color="var(--color-primary)" />
+            <span className="knowledge-link-text">{existing.link}</span>
+          </a>
+        )}
 
         {existing && (
           <div className="task-timestamps">

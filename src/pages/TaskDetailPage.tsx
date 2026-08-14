@@ -4,14 +4,16 @@ import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
 import { BADGES } from '../data/badges';
-import { IconBack, IconTrash } from '../components/common/Icons';
-import type { TaskPriority, TaskStatus } from '../types';
+import {
+  IconBack, IconTrash, IconPlus, IconCheckCircle, IconRepeat, IconSubtask,
+} from '../components/common/Icons';
+import type { TaskPriority, TaskStatus, RepeatType } from '../types';
 import './TaskDetailPage.css';
 
 export default function TaskDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tasks, categories, addTask, updateTask, deleteTask, toggleTaskComplete } = useStore();
+  const { tasks, categories, addTask, updateTask, deleteTask, toggleTaskComplete, addSubtask, toggleSubtask } = useStore();
   const addToast = useToastStore(s => s.addToast);
 
   const isNew = id === 'new' || !id;
@@ -23,7 +25,12 @@ export default function TaskDetailPage() {
   const [priority, setPriority] = useState<TaskPriority>(null);
   const [categoryId, setCategoryId] = useState<string>('');
   const [dueDate, setDueDate] = useState('');
+  const [repeat, setRepeat] = useState<RepeatType>('none');
   const [showDelete, setShowDelete] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+
+  // 子任务列表
+  const subtasks = !isNew ? tasks.filter(t => t.parentId === id) : [];
 
   useEffect(() => {
     if (existing) {
@@ -33,6 +40,7 @@ export default function TaskDetailPage() {
       setPriority(existing.priority);
       setCategoryId(existing.categoryId || '');
       setDueDate(existing.dueDate || '');
+      setRepeat(existing.repeat || 'none');
     }
   }, [existing]);
 
@@ -47,6 +55,7 @@ export default function TaskDetailPage() {
         priority,
         categoryId: categoryId || null,
         dueDate: dueDate || null,
+        repeat,
       });
       addToast({ icon: '✓', title: '任务已创建' });
     } else {
@@ -58,9 +67,9 @@ export default function TaskDetailPage() {
         priority,
         categoryId: categoryId || null,
         dueDate: dueDate || null,
+        repeat,
       });
 
-      // 如果状态从非完成变为完成，触发完成逻辑
       if (!wasDone && status === 'done') {
         const result = toggleTaskComplete(id!);
         if (result.pointsEarned > 0) {
@@ -84,6 +93,20 @@ export default function TaskDetailPage() {
     }
     setShowDelete(false);
     navigate('/');
+  };
+
+  const handleAddSubtask = () => {
+    if (!newSubtaskTitle.trim() || !id) return;
+    addSubtask(id, newSubtaskTitle.trim());
+    setNewSubtaskTitle('');
+    addToast({ icon: '✓', title: '子任务已添加' });
+  };
+
+  const repeatLabels: Record<RepeatType, string> = {
+    none: '不重复',
+    daily: '每天',
+    weekly: '每周',
+    monthly: '每月',
   };
 
   return (
@@ -156,6 +179,58 @@ export default function TaskDetailPage() {
           </div>
         </div>
 
+        {/* 重复任务设置 */}
+        <div className="form-group">
+          <label className="form-label">
+            <IconRepeat size={16} color="var(--color-primary)" /> 重复
+          </label>
+          <div className="repeat-options">
+            {(Object.keys(repeatLabels) as RepeatType[]).map(r => (
+              <button
+                key={r}
+                className={`repeat-btn ${repeat === r ? 'active' : ''}`}
+                onClick={() => setRepeat(r)}
+              >
+                {repeatLabels[r]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 子任务管理（仅编辑模式） */}
+        {!isNew && (
+          <div className="form-group">
+            <label className="form-label">
+              <IconSubtask size={16} color="var(--color-primary)" /> 子任务
+            </label>
+            <div className="subtask-manage-list">
+              {subtasks.map(st => (
+                <div key={st.id} className="subtask-manage-item" onClick={() => toggleSubtask(st.id)}>
+                  <span className={`subtask-check ${st.status === 'done' ? 'done' : ''}`}>
+                    {st.status === 'done' && <IconCheckCircle size={16} color="var(--color-primary)" />}
+                  </span>
+                  <span className={`subtask-manage-title ${st.status === 'done' ? 'done-text' : ''}`}>{st.title}</span>
+                </div>
+              ))}
+              {subtasks.length === 0 && (
+                <p className="subtask-empty-hint">暂无子任务</p>
+              )}
+            </div>
+            <div className="subtask-add-row">
+              <input
+                className="form-input subtask-add-input"
+                placeholder="添加子任务..."
+                value={newSubtaskTitle}
+                onChange={e => setNewSubtaskTitle(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddSubtask()}
+              />
+              <button className="btn btn-primary btn-sm" onClick={handleAddSubtask} disabled={!newSubtaskTitle.trim()}>
+                <IconPlus size={16} color="#fff" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {existing && (
           <div className="task-timestamps">
             <span>创建时间：{new Date(existing.createdAt).toLocaleString('zh-CN')}</span>
@@ -176,7 +251,7 @@ export default function TaskDetailPage() {
       <ConfirmDialog
         open={showDelete}
         title="删除任务"
-        message="确定要删除这个任务吗？此操作不可撤销。"
+        message="确定要删除这个任务吗？所有子任务也会被删除。"
         confirmText="删除"
         onConfirm={handleDelete}
         onCancel={() => setShowDelete(false)}

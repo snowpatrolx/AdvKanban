@@ -392,3 +392,55 @@ export function IconClose({ size = 20, color = 'currentColor', className }: Icon
     </svg>
   );
 }
+
+// Repeat icon (for recurring tasks)
+export function IconRepeat({ size = 16, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <path d="M17 2l4 4-4 4" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <path d="M7 22l-4-4 4-4" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
+  );
+}
+
+// Link icon (for knowledge article links)
+export function IconLink({ size = 16, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+      <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+    </svg>
+  );
+}
+
+// Chevron down icon (for expand/collapse)
+export function IconChevronDown({ size = 18, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+// Chevron right icon
+export function IconChevronRight({ size = 18, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+// Subtask / nested list icon
+export function IconSubtask({ size = 16, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <path d="M3 6h6M3 18h6" />
+      <path d="M9 6v12" />
+      <rect x="14" y="3" width="7" height="6" rx="1" />
+      <rect x="14" y="15" width="7" height="6" rx="1" />
+    </svg>
+  );
+}

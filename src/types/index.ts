@@ -1,6 +1,7 @@
 // ===== 任务相关类型 =====
 export type TaskStatus = 'todo' | 'doing' | 'done';
 export type TaskPriority = 'high' | 'medium' | 'low' | null;
+export type RepeatType = 'none' | 'daily' | 'weekly' | 'monthly';
 
 export interface Task {
   id: string;
@@ -13,6 +14,8 @@ export interface Task {
   createdAt: string;            // ISO datetime
   completedAt: string | null;   // ISO datetime
   order: number;                // 排序
+  repeat: RepeatType;           // 重复任务
+  parentId: string | null;      // 父任务ID（子任务用）
 }
 
 // ===== 分类 =====
@@ -28,6 +31,7 @@ export interface Knowledge {
   title: string;
   content: string;
   categoryId: string | null;
+  link: string;                 // 文章链接 URL
   createdAt: string;
   updatedAt: string;
 }

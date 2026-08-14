@@ -40,3 +40,91 @@
 .knowledge-textarea {
   min-height: 200px;
 }
+
+/* 重复任务选项 */
+.repeat-options {
+  display: flex;
+  gap: 8px;
+}
+
+.repeat-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-card);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  transition: all 0.2s;
+}
+
+.repeat-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 子任务管理 */
+.subtask-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.subtask-manage-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.subtask-manage-title {
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.subtask-manage-title.done-text {
+  text-decoration: line-through;
+  color: var(--color-text-light);
+}
+
+.subtask-empty-hint {
+  font-size: 13px;
+  color: var(--color-text-light);
+  padding: 8px 0;
+}
+
+.subtask-add-row {
+  display: flex;
+  gap: 8px;
+}
+
+.subtask-add-input {
+  flex: 1;
+}
+
+/* 知识库链接预览 */
+.knowledge-link-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  text-decoration: none;
+  color: var(--color-primary);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.knowledge-link-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

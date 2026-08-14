@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { getCategoryName, getCategoryColor } from '../utils/taskHelpers';
-import { IconBook, IconPlus, IconSearch } from '../components/common/Icons';
+import { IconBook, IconPlus, IconSearch, IconLink } from '../components/common/Icons';
 import './KnowledgePage.css';
 
 export default function KnowledgePage() {
@@ -71,7 +71,10 @@ export default function KnowledgePage() {
             const catColor = getCategoryColor(categories, k.categoryId);
             return (
               <div key={k.id} className="knowledge-card" onClick={() => navigate(`/knowledge/${k.id}`)}>
-                <div className="knowledge-card-title">{k.title}</div>
+                <div className="knowledge-card-title">
+                  {k.title}
+                  {k.link && <IconLink size={14} color="var(--color-primary)" className="knowledge-link-icon" />}
+                </div>
                 <div className="knowledge-card-preview">
                   {k.content.replace(/[#*`>\-]/g, '').substring(0, 60)}
                   {k.content.length > 60 ? '...' : ''}

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   Task, Category, Knowledge, UserProfile, StoryProgress, StoryLog, DailyRecord,
-  TaskStatus, TaskPriority,
+  TaskStatus, TaskPriority, RepeatType,
 } from '../types';
 import { generateId, getTodayStr } from '../utils/id';
 import {
@@ -30,6 +30,10 @@ interface StoreState {
   reorderTasks: (sourceId: string, targetId: string) => void;
   setTaskStatus: (id: string, status: TaskStatus) => void;
 
+  // 子任务操作
+  addSubtask: (parentId: string, title: string) => string;
+  toggleSubtask: (id: string) => void;
+
   // 分类操作
   addCategory: (name: string, color: string) => string;
   updateCategory: (id: string, data: Partial<Category>) => void;
@@ -49,20 +53,28 @@ interface StoreState {
   _processTaskCompletion: (task: Task) => { pointsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.00';
+export const APP_VERSION = '1.01';
 
 const defaultCategories: Category[] = [
-  { id: 'cat-orange', name: '橙橙在家', color: '#e17055' },
-  { id: 'cat-alone', name: '独自在家', color: '#6c5ce7' },
-  { id: 'cat-outwork', name: '外出工作', color: '#00b894' },
+  { id: 'cat-home', name: 'home', color: '#e17055' },
+  { id: 'cat-solo', name: 'solo', color: '#6c5ce7' },
+  { id: 'cat-out', name: 'out', color: '#00b894' },
 ];
+
+// 旧分类ID到新分类ID的映射
+const categoryIdMap: Record<string, string> = {
+  'cat-orange': 'cat-home',
+  'cat-alone': 'cat-solo',
+  'cat-outwork': 'cat-out',
+};
 
 const seedKnowledge: Knowledge[] = [
   {
     id: 'seed-k1',
     title: '番茄工作法',
     content: '番茄工作法是一种时间管理方法：\n\n1. 选择一个待完成的任务\n2. 设定25分钟计时（一个番茄钟）\n3. 专注工作，直到计时结束\n4. 休息5分钟\n5. 每完成4个番茄钟，休息15-30分钟\n\n核心理念：在一段时间内保持完全专注，避免多任务切换带来的效率损失。',
-    categoryId: 'cat-alone',
+    categoryId: 'cat-solo',
+    link: 'https://francescocirillo.com/products/the-pomodoro-technique',
     createdAt: '2026-08-01T08:00:00.000Z',
     updatedAt: '2026-08-01T08:00:00.000Z',
   },
@@ -70,7 +82,8 @@ const seedKnowledge: Knowledge[] = [
     id: 'seed-k2',
     title: 'GTD 任务管理法',
     content: 'Getting Things Done（GTD）五步法：\n\n1. 捕获：将所有想法和任务记录下来\n2. 澄清：判断每个项目是否可执行\n3. 组织：将任务分类到不同清单\n4. 反思：定期回顾和更新\n5. 执行：根据情境选择合适的任务执行\n\n关键原则：大脑是用来思考的，不是用来记忆的。',
-    categoryId: 'cat-outwork',
+    categoryId: 'cat-out',
+    link: 'https://gettingthingsdone.com/what-is-gtd/',
     createdAt: '2026-08-02T10:00:00.000Z',
     updatedAt: '2026-08-02T10:00:00.000Z',
   },
@@ -78,7 +91,8 @@ const seedKnowledge: Knowledge[] = [
     id: 'seed-k3',
     title: '橙橙日常照护要点',
     content: '橙橙在家的日常注意事项：\n\n- 定时喂食，每天2次，早晚各一次\n- 保证充足饮水，每天换新鲜水\n- 每天至少陪伴互动30分钟\n- 注意室内温度，保持在22-26度\n- 定期检查猫砂盆，保持清洁\n- 注意观察精神状态和食欲变化',
-    categoryId: 'cat-orange',
+    categoryId: 'cat-home',
+    link: '',
     createdAt: '2026-08-03T09:00:00.000Z',
     updatedAt: '2026-08-03T09:00:00.000Z',
   },
@@ -86,7 +100,8 @@ const seedKnowledge: Knowledge[] = [
     id: 'seed-k4',
     title: '艾森豪威尔矩阵',
     content: '四象限任务分类法：\n\n- 重要且紧急：立即亲自做（危机、截止日期）\n- 重要不紧急：计划安排做（学习、锻炼、规划）\n- 紧急不重要：委托别人做（部分会议、电话）\n- 不紧急不重要：尽量减少（刷手机、无意义娱乐）\n\n高效人士把更多时间花在「重要不紧急」的第二象限。',
-    categoryId: 'cat-outwork',
+    categoryId: 'cat-out',
+    link: 'https://www.eisenhower.me/eisenhower-matrix/',
     createdAt: '2026-08-04T14:00:00.000Z',
     updatedAt: '2026-08-04T14:00:00.000Z',
   },
@@ -94,7 +109,8 @@ const seedKnowledge: Knowledge[] = [
     id: 'seed-k5',
     title: '独自在家效率指南',
     content: '居家独自工作时保持高效的方法：\n\n1. 固定工作区域，与休息区分开\n2. 穿着正式些，营造工作仪式感\n3. 制定每日计划，列出3件最重要的事\n4. 使用番茄钟保持专注\n5. 午休不超过30分钟\n6. 设定下班时间，工作生活分离\n7. 适当背景音乐，避免太安静',
-    categoryId: 'cat-alone',
+    categoryId: 'cat-solo',
+    link: '',
     createdAt: '2026-08-05T11:00:00.000Z',
     updatedAt: '2026-08-05T11:00:00.000Z',
   },
@@ -115,6 +131,18 @@ const defaultStoryProgress: StoryProgress = {
   bossCurrentHP: {},
   defeatedBosses: [],
 };
+
+// 计算重复任务的下一个截止日期
+function getNextDueDate(dueDate: string | null, repeat: RepeatType): string | null {
+  if (!dueDate || repeat === 'none') return dueDate;
+  const d = new Date(dueDate);
+  switch (repeat) {
+    case 'daily': d.setDate(d.getDate() + 1); break;
+    case 'weekly': d.setDate(d.getDate() + 7); break;
+    case 'monthly': d.setMonth(d.getMonth() + 1); break;
+  }
+  return d.toISOString().substring(0, 10);
+}
 
 export const useStore = create<StoreState>()(
   persist(
@@ -144,6 +172,8 @@ export const useStore = create<StoreState>()(
           createdAt: now,
           completedAt: null,
           order: maxOrder + 1,
+          repeat: data.repeat || 'none',
+          parentId: data.parentId || null,
         };
         set(state => ({ tasks: [...state.tasks, task] }));
         return id;
@@ -156,7 +186,10 @@ export const useStore = create<StoreState>()(
       },
 
       deleteTask: (id) => {
-        set(state => ({ tasks: state.tasks.filter(t => t.id !== id) }));
+        set(state => ({
+          // 删除任务及其所有子任务
+          tasks: state.tasks.filter(t => t.id !== id && t.parentId !== id),
+        }));
       },
 
       toggleTaskComplete: (id) => {
@@ -192,11 +225,25 @@ export const useStore = create<StoreState>()(
         const newDailyRecords = updateDailyRecord(state.dailyRecords, todayStr, pointsEarned);
 
         // 更新任务状态
-        const updatedTasks = state.tasks.map(t =>
+        let updatedTasks = state.tasks.map(t =>
           t.id === task.id
             ? { ...t, status: 'done' as TaskStatus, completedAt: new Date().toISOString() }
             : t
         );
+
+        // 如果是重复任务，创建下一个周期的新任务
+        if (task.repeat !== 'none' && !task.parentId) {
+          const nextDue = getNextDueDate(task.dueDate, task.repeat);
+          const newTask: Task = {
+            ...task,
+            id: generateId(),
+            status: 'todo',
+            completedAt: null,
+            dueDate: nextDue,
+            createdAt: new Date().toISOString(),
+          };
+          updatedTasks = [...updatedTasks, newTask];
+        }
 
         // 更新用户资料
         const newCompletedCount = profile.completedTaskCount + 1;
@@ -211,7 +258,6 @@ export const useStore = create<StoreState>()(
 
         const currentChapter = CHAPTERS.find(c => c.id === newStoryProgress.currentChapter);
         if (currentChapter && currentChapter.bossName) {
-          // 当前章节有 Boss
           const bossMaxHP = currentChapter.bossHP;
           const bossCurrentHP = newStoryProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
           const result = calculateBossDamage(bossMaxHP, bossCurrentHP, pointsEarned);
@@ -221,7 +267,6 @@ export const useStore = create<StoreState>()(
             [currentChapter.id]: result.remainingHP,
           };
 
-          // 生成故事日志
           newStoryLogs.push({
             id: generateId(),
             chapterId: currentChapter.id,
@@ -239,7 +284,6 @@ export const useStore = create<StoreState>()(
               createdAt: new Date().toISOString(),
             });
 
-            // 解锁下一章
             const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
             if (nextChapter) {
               newStoryProgress.currentChapter = nextChapter.id;
@@ -252,7 +296,7 @@ export const useStore = create<StoreState>()(
                 createdAt: new Date().toISOString(),
               });
             } else {
-              storyUnlocked = 0; // 全部通关
+              storyUnlocked = 0;
               newStoryLogs.push({
                 id: generateId(),
                 chapterId: currentChapter.id,
@@ -262,14 +306,12 @@ export const useStore = create<StoreState>()(
             }
           }
         } else if (currentChapter) {
-          // 当前章节没有 Boss（第1章），检查推进条件
           const ctx = {
             completedTaskCount: newCompletedCount,
             knowledgeCount: state.knowledge.length,
             currentStreak: newStreak,
           };
           if (checkChapterCondition(currentChapter.condition, currentChapter.conditionValue, ctx)) {
-            // 条件满足，解锁下一章
             const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
             if (nextChapter) {
               newStoryProgress.currentChapter = nextChapter.id;
@@ -284,7 +326,6 @@ export const useStore = create<StoreState>()(
             }
           }
 
-          // 第1章也生成日志
           newStoryLogs.push({
             id: generateId(),
             chapterId: currentChapter.id,
@@ -293,9 +334,6 @@ export const useStore = create<StoreState>()(
           });
         }
 
-        // 检查新解锁的章节是否有满足条件的
-        // 对于第3章（累计10个任务）等条件，可能在非 Boss 章节时满足
-        // 需要检查当前章节是否可以通过条件推进
         if (!bossDefeated && storyUnlocked === null) {
           const checkChapter = CHAPTERS.find(c => c.id === newStoryProgress.currentChapter);
           if (checkChapter && !checkChapter.bossName) {
@@ -321,7 +359,6 @@ export const useStore = create<StoreState>()(
           }
         }
 
-        // 更新用户资料
         const newProfile: UserProfile = {
           ...profile,
           totalPoints: newTotalPoints,
@@ -332,7 +369,6 @@ export const useStore = create<StoreState>()(
           lastCompletedDate: todayStr,
         };
 
-        // 检查徽章
         const storyComplete = newStoryProgress.defeatedBosses.length === CHAPTERS.filter(c => c.bossName).length
           && CHAPTERS.every(c => newStoryProgress.unlockedChapters.includes(c.id));
         const newBadges = checkAllBadges(state.userBadges, {
@@ -376,7 +412,6 @@ export const useStore = create<StoreState>()(
         if (status === 'done' && task.status !== 'done') {
           get()._processTaskCompletion(task);
         } else if (status !== 'done' && task.status === 'done') {
-          // 从已完成切换到其他状态
           set(s => ({
             tasks: s.tasks.map(t =>
               t.id === id ? { ...t, status, completedAt: null } : t
@@ -386,6 +421,58 @@ export const useStore = create<StoreState>()(
           set(s => ({
             tasks: s.tasks.map(t => t.id === id ? { ...t, status } : t),
           }));
+        }
+      },
+
+      // ===== 子任务操作 =====
+      addSubtask: (parentId, title) => {
+        const id = generateId();
+        const now = new Date().toISOString();
+        const parent = get().tasks.find(t => t.id === parentId);
+        const subtaskOrder = get().tasks.filter(t => t.parentId === parentId).length;
+        const task: Task = {
+          id,
+          title: title.trim(),
+          description: '',
+          status: 'todo',
+          priority: parent?.priority || null,
+          categoryId: parent?.categoryId || null,
+          dueDate: parent?.dueDate || null,
+          createdAt: now,
+          completedAt: null,
+          order: subtaskOrder + 1,
+          repeat: 'none',
+          parentId,
+        };
+        set(state => ({ tasks: [...state.tasks, task] }));
+        return id;
+      },
+
+      toggleSubtask: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+        if (!task || !task.parentId) return;
+
+        if (task.status === 'done') {
+          set(state => ({
+            tasks: state.tasks.map(t =>
+              t.id === id ? { ...t, status: 'todo' as TaskStatus, completedAt: null } : t
+            ),
+          }));
+        } else {
+          // 子任务完成不触发积分/冒险逻辑，只更新状态
+          set(state => ({
+            tasks: state.tasks.map(t =>
+              t.id === id ? { ...t, status: 'done' as TaskStatus, completedAt: new Date().toISOString() } : t
+            ),
+          }));
+
+          // 检查是否所有子任务都完成了
+          const siblings = get().tasks.filter(t => t.parentId === task.parentId);
+          const allDone = siblings.every(t => t.status === 'done');
+          if (allDone) {
+            // 自动完成父任务并触发积分逻辑
+            get()._processTaskCompletion(get().tasks.find(t => t.id === task.parentId)!);
+          }
         }
       },
 
@@ -421,12 +508,12 @@ export const useStore = create<StoreState>()(
           title: data.title || '',
           content: data.content || '',
           categoryId: data.categoryId || null,
+          link: data.link || '',
           createdAt: now,
           updatedAt: now,
         };
         set(state => {
           const newKnowledge = [...state.knowledge, item];
-          // 检查知识相关徽章
           const newBadges = checkAllBadges(state.userBadges, {
             completedTaskCount: state.userProfile.completedTaskCount,
             knowledgeCount: newKnowledge.length,
@@ -467,7 +554,7 @@ export const useStore = create<StoreState>()(
           storyProgress: state.storyProgress,
           storyLogs: state.storyLogs,
           exportTime: new Date().toISOString(),
-          version: '1.0.0',
+          version: APP_VERSION,
         };
         return JSON.stringify(data, null, 2);
       },
@@ -506,19 +593,40 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'quest-planner-storage',
-      version: 2,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
-        // v1 -> v2: update categories and seed knowledge
-        if (version < 2) {
-          return {
-            ...persistedState,
-            categories: defaultCategories,
-            knowledge: persistedState.knowledge?.length > 0
-              ? persistedState.knowledge
-              : seedKnowledge,
-          };
+        let state = { ...persistedState };
+
+        // v1/v2 -> v3: update categories, add new task fields, add knowledge link
+        if (version < 3) {
+          // 迁移分类ID
+          if (state.categories) {
+            state.categories = defaultCategories;
+          }
+          // 迁移任务的分类ID和新字段
+          if (state.tasks) {
+            state.tasks = state.tasks.map((t: any) => ({
+              ...t,
+              repeat: t.repeat || 'none',
+              parentId: t.parentId || null,
+              categoryId: t.categoryId ? (categoryIdMap[t.categoryId] || t.categoryId) : null,
+            }));
+          }
+          // 迁移知识的分类ID和链接字段
+          if (state.knowledge) {
+            state.knowledge = state.knowledge.map((k: any) => ({
+              ...k,
+              link: k.link || '',
+              categoryId: k.categoryId ? (categoryIdMap[k.categoryId] || k.categoryId) : null,
+            }));
+            // 如果没有知识，用种子数据
+            if (state.knowledge.length === 0) {
+              state.knowledge = seedKnowledge;
+            }
+          }
         }
-        return persistedState;
+
+        return state;
       },
     }
   )
