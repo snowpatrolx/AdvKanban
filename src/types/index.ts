@@ -1,7 +1,10 @@
 // ===== 任务相关类型 =====
 export type TaskStatus = 'todo' | 'doing' | 'done';
 export type TaskPriority = 'high' | 'medium' | 'low' | null;
-export type RepeatType = 'none' | 'daily' | 'weekly' | 'monthly';
+export type RepeatType = 'none' | 'daily' | 'weekly' | 'monthly' | 'weekdays' | 'workdays' | 'holidays';
+
+// 日志类型：damage=伤害, task=任务完成, story=剧情
+export type LogType = 'damage' | 'task' | 'story';
 
 export interface Task {
   id: string;
@@ -15,6 +18,7 @@ export interface Task {
   completedAt: string | null;   // ISO datetime
   order: number;                // 排序
   repeat: RepeatType;           // 重复任务
+  repeatWeekdays?: number[];    // 自定义周几重复 (0=周日, 1=周一, ..., 6=周六)
   parentId: string | null;      // 父任务ID（子任务用）
 }
 
@@ -79,6 +83,7 @@ export interface StoryLog {
   id: string;
   chapterId: number;
   text: string;
+  type: LogType;
   createdAt: string;
 }
 

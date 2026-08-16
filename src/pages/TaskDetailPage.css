@@ -45,10 +45,12 @@
 .repeat-options {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .repeat-btn {
   flex: 1;
+  min-width: 60px;
   padding: 8px 4px;
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -63,6 +65,57 @@
   background: var(--color-primary);
   color: #fff;
   font-weight: 600;
+}
+
+/* 自选周几重复 */
+.repeat-weekdays {
+  margin-top: 10px;
+}
+
+.repeat-weekdays-hint {
+  font-size: 12px;
+  color: var(--color-text-light);
+  margin-bottom: 8px;
+}
+
+.weekday-selector {
+  display: flex;
+  gap: 6px;
+}
+
+.weekday-btn {
+  flex: 1;
+  aspect-ratio: 1;
+  border: 1.5px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-card);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weekday-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* 自定义日期重复 - 保留用于法定工作日/节假日提示 */
+.repeat-info-hint {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(108, 92, 231, 0.06);
+  border-radius: var(--radius-sm);
+}
+
+.repeat-info-hint p {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
 /* 子任务管理 */
@@ -80,17 +133,59 @@
   padding: 8px 10px;
   background: var(--color-bg);
   border-radius: var(--radius-sm);
+}
+
+.subtask-manage-item .subtask-check {
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .subtask-manage-title {
   font-size: 14px;
   color: var(--color-text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .subtask-manage-title.done-text {
   text-decoration: line-through;
   color: var(--color-text-light);
+}
+
+.subtask-action-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.subtask-action-btn:active {
+  opacity: 1;
+}
+
+.subtask-edit-input {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+.subtask-edit-confirm {
+  flex-shrink: 0;
+  padding: 4px 8px;
+}
+
+.subtask-edit-cancel {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 13px;
 }
 
 .subtask-empty-hint {
@@ -127,4 +222,34 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 悬浮保存按钮 */
+.floating-save-btn {
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  box-shadow: 0 4px 16px rgba(108, 92, 231, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.floating-save-btn:active {
+  transform: scale(0.92);
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+}
+
+.floating-save-btn.disabled {
+  opacity: 0.4;
+  box-shadow: none;
+  cursor: not-allowed;
 }

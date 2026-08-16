@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   Task, Category, Knowledge, UserProfile, StoryProgress, StoryLog, DailyRecord,
-  TaskStatus, TaskPriority, RepeatType,
+  TaskStatus, TaskPriority, RepeatType, LogType,
 } from '../types';
 import { generateId, getTodayStr } from '../utils/id';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../utils/gamification';
 import { CHAPTERS } from '../data/chapters';
 import { BADGES } from '../data/badges';
+import { isHoliday, isWorkday, CN_HOLIDAYS } from '../data/holidays';
 
 interface StoreState {
   tasks: Task[];
@@ -32,7 +33,9 @@ interface StoreState {
 
   // 子任务操作
   addSubtask: (parentId: string, title: string) => string;
-  toggleSubtask: (id: string) => void;
+  updateSubtask: (id: string, data: Partial<Task>) => void;
+  deleteSubtask: (id: string) => void;
+  toggleSubtask: (id: string) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 
   // 分类操作
   addCategory: (name: string, color: string) => string;
@@ -51,15 +54,20 @@ interface StoreState {
 
   // 内部
   _processTaskCompletion: (task: Task) => { pointsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
+  _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.01';
+export const APP_VERSION = '1.05';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
   { id: 'cat-solo', name: 'solo', color: '#6c5ce7' },
   { id: 'cat-out', name: 'out', color: '#00b894' },
+  { id: 'cat-any', name: 'any', color: '#0984e3' },
 ];
+
+// any 分类 ID，属于所有分类
+export const ANY_CATEGORY_ID = 'cat-any';
 
 // 旧分类ID到新分类ID的映射
 const categoryIdMap: Record<string, string> = {
@@ -132,16 +140,76 @@ const defaultStoryProgress: StoryProgress = {
   defeatedBosses: [],
 };
 
+// 创建故事日志的辅助函数
+function createLog(chapterId: number, text: string, type: LogType): StoryLog {
+  return {
+    id: generateId(),
+    chapterId,
+    text,
+    type,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 // 计算重复任务的下一个截止日期
-function getNextDueDate(dueDate: string | null, repeat: RepeatType): string | null {
+function getNextDueDate(
+  dueDate: string | null,
+  repeat: RepeatType,
+  repeatWeekdays?: number[],
+): string | null {
   if (!dueDate || repeat === 'none') return dueDate;
-  const d = new Date(dueDate);
+
   switch (repeat) {
-    case 'daily': d.setDate(d.getDate() + 1); break;
-    case 'weekly': d.setDate(d.getDate() + 7); break;
-    case 'monthly': d.setMonth(d.getMonth() + 1); break;
+    case 'daily': {
+      const d = new Date(dueDate);
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().substring(0, 10);
+    }
+    case 'weekly': {
+      const d = new Date(dueDate);
+      d.setDate(d.getDate() + 7);
+      return d.toISOString().substring(0, 10);
+    }
+    case 'monthly': {
+      const d = new Date(dueDate);
+      d.setMonth(d.getMonth() + 1);
+      return d.toISOString().substring(0, 10);
+    }
+    case 'weekdays': {
+      // 找下一个选中的星期几
+      if (!repeatWeekdays || repeatWeekdays.length === 0) return dueDate;
+      const base = new Date(dueDate);
+      for (let i = 1; i <= 14; i++) {
+        const next = new Date(base);
+        next.setDate(base.getDate() + i);
+        if (repeatWeekdays.includes(next.getDay())) {
+          return next.toISOString().substring(0, 10);
+        }
+      }
+      return dueDate;
+    }
+    case 'workdays': {
+      // 法定工作日：找下一个工作日（周一到周五且非节假日，或调休工作日）
+      const base = new Date(dueDate);
+      for (let i = 1; i <= 15; i++) {
+        const next = new Date(base);
+        next.setDate(base.getDate() + i);
+        const dateStr = next.toISOString().substring(0, 10);
+        if (isWorkday(dateStr)) {
+          return dateStr;
+        }
+      }
+      return dueDate;
+    }
+    case 'holidays': {
+      // 法定节假日：找下一个节假日
+      const sorted = CN_HOLIDAYS.map(h => h.date).sort();
+      const next = sorted.find(d => d > dueDate);
+      return next || sorted[0];
+    }
+    default:
+      return dueDate;
   }
-  return d.toISOString().substring(0, 10);
 }
 
 export const useStore = create<StoreState>()(
@@ -173,6 +241,7 @@ export const useStore = create<StoreState>()(
           completedAt: null,
           order: maxOrder + 1,
           repeat: data.repeat || 'none',
+          repeatWeekdays: data.repeatWeekdays,
           parentId: data.parentId || null,
         };
         set(state => ({ tasks: [...state.tasks, task] }));
@@ -233,7 +302,7 @@ export const useStore = create<StoreState>()(
 
         // 如果是重复任务，创建下一个周期的新任务
         if (task.repeat !== 'none' && !task.parentId) {
-          const nextDue = getNextDueDate(task.dueDate, task.repeat);
+          const nextDue = getNextDueDate(task.dueDate, task.repeat, task.repeatWeekdays);
           const newTask: Task = {
             ...task,
             id: generateId(),
@@ -267,42 +336,38 @@ export const useStore = create<StoreState>()(
             [currentChapter.id]: result.remainingHP,
           };
 
-          newStoryLogs.push({
-            id: generateId(),
-            chapterId: currentChapter.id,
-            text: `你完成了「${task.title}」，对${currentChapter.bossName}造成 ${pointsEarned} 点伤害！`,
-            createdAt: new Date().toISOString(),
-          });
+          newStoryLogs.push(createLog(
+            currentChapter.id,
+            `你完成了「${task.title}」，对${currentChapter.bossName}造成 ${pointsEarned} 点伤害！`,
+            'damage',
+          ));
 
           if (result.isDefeated) {
             bossDefeated = true;
             newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, currentChapter.id];
-            newStoryLogs.push({
-              id: generateId(),
-              chapterId: currentChapter.id,
-              text: currentChapter.bossDefeatedText,
-              createdAt: new Date().toISOString(),
-            });
+            newStoryLogs.push(createLog(
+              currentChapter.id,
+              currentChapter.bossDefeatedText,
+              'story',
+            ));
 
             const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
             if (nextChapter) {
               newStoryProgress.currentChapter = nextChapter.id;
               newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
               storyUnlocked = nextChapter.id;
-              newStoryLogs.push({
-                id: generateId(),
-                chapterId: nextChapter.id,
-                text: nextChapter.storyText,
-                createdAt: new Date().toISOString(),
-              });
+              newStoryLogs.push(createLog(
+                nextChapter.id,
+                nextChapter.storyText,
+                'story',
+              ));
             } else {
               storyUnlocked = 0;
-              newStoryLogs.push({
-                id: generateId(),
-                chapterId: currentChapter.id,
-                text: '恭喜你！你已通关全部章节，成为了真正的秩序守护者！',
-                createdAt: new Date().toISOString(),
-              });
+              newStoryLogs.push(createLog(
+                currentChapter.id,
+                '恭喜你！你已通关全部章节，成为了真正的秩序守护者！',
+                'story',
+              ));
             }
           }
         } else if (currentChapter) {
@@ -317,21 +382,19 @@ export const useStore = create<StoreState>()(
               newStoryProgress.currentChapter = nextChapter.id;
               newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
               storyUnlocked = nextChapter.id;
-              newStoryLogs.push({
-                id: generateId(),
-                chapterId: nextChapter.id,
-                text: nextChapter.storyText,
-                createdAt: new Date().toISOString(),
-              });
+              newStoryLogs.push(createLog(
+                nextChapter.id,
+                nextChapter.storyText,
+                'story',
+              ));
             }
           }
 
-          newStoryLogs.push({
-            id: generateId(),
-            chapterId: currentChapter.id,
-            text: `你完成了「${task.title}」，获得了 ${pointsEarned} 点经验值。`,
-            createdAt: new Date().toISOString(),
-          });
+          newStoryLogs.push(createLog(
+            currentChapter.id,
+            `你完成了「${task.title}」，获得了 ${pointsEarned} 点经验值。`,
+            'task',
+          ));
         }
 
         if (!bossDefeated && storyUnlocked === null) {
@@ -348,12 +411,11 @@ export const useStore = create<StoreState>()(
                 newStoryProgress.currentChapter = nextChapter.id;
                 newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
                 storyUnlocked = nextChapter.id;
-                newStoryLogs.push({
-                  id: generateId(),
-                  chapterId: nextChapter.id,
-                  text: nextChapter.storyText,
-                  createdAt: new Date().toISOString(),
-                });
+                newStoryLogs.push(createLog(
+                  nextChapter.id,
+                  nextChapter.storyText,
+                  'story',
+                ));
               }
             }
           }
@@ -448,32 +510,123 @@ export const useStore = create<StoreState>()(
         return id;
       },
 
-      toggleSubtask: (id) => {
+      updateSubtask: (id, data) => {
+        set(state => ({
+          tasks: state.tasks.map(t =>
+            t.id === id && t.parentId ? { ...t, ...data } : t
+          ),
+        }));
+      },
+
+      deleteSubtask: (id) => {
         const task = get().tasks.find(t => t.id === id);
         if (!task || !task.parentId) return;
+        set(state => ({
+          tasks: state.tasks.filter(t => t.id !== id),
+        }));
+      },
+
+      toggleSubtask: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+        if (!task || !task.parentId) return { bossDamage: 0, bossDefeated: false, storyUnlocked: null };
 
         if (task.status === 'done') {
+          // 取消完成子任务
           set(state => ({
             tasks: state.tasks.map(t =>
               t.id === id ? { ...t, status: 'todo' as TaskStatus, completedAt: null } : t
             ),
           }));
+          return { bossDamage: 0, bossDefeated: false, storyUnlocked: null };
         } else {
-          // 子任务完成不触发积分/冒险逻辑，只更新状态
+          // 完成子任务：更新状态
           set(state => ({
             tasks: state.tasks.map(t =>
               t.id === id ? { ...t, status: 'done' as TaskStatus, completedAt: new Date().toISOString() } : t
             ),
           }));
 
+          // 子任务完成也会对 Boss 造成伤害
+          const result = get()._processSubtaskCompletion(task);
+
           // 检查是否所有子任务都完成了
           const siblings = get().tasks.filter(t => t.parentId === task.parentId);
           const allDone = siblings.every(t => t.status === 'done');
           if (allDone) {
             // 自动完成父任务并触发积分逻辑
-            get()._processTaskCompletion(get().tasks.find(t => t.id === task.parentId)!);
+            const parentResult = get()._processTaskCompletion(get().tasks.find(t => t.id === task.parentId)!);
+            // 合并结果：如果子任务已经击败了 boss，不再重复报告
+            return {
+              bossDamage: result.bossDamage,
+              bossDefeated: result.bossDefeated || parentResult.bossDefeated,
+              storyUnlocked: result.storyUnlocked || parentResult.storyUnlocked,
+            };
+          }
+
+          return result;
+        }
+      },
+
+      _processSubtaskCompletion: (subtask) => {
+        const state = get();
+        const parentTask = state.tasks.find(t => t.id === subtask.parentId);
+        if (!parentTask) return { bossDamage: 0, bossDefeated: false, storyUnlocked: null };
+
+        // 子任务伤害 = 父任务基础积分的一半
+        const basePoints = parentTask.priority === 'high' ? 10 : 5;
+        const bossDamage = basePoints;
+
+        let bossDefeated = false;
+        let storyUnlocked: number | null = null;
+        const newStoryProgress = { ...state.storyProgress };
+        const newStoryLogs = [...state.storyLogs];
+
+        const currentChapter = CHAPTERS.find(c => c.id === newStoryProgress.currentChapter);
+        if (currentChapter && currentChapter.bossName) {
+          const bossMaxHP = currentChapter.bossHP;
+          const bossCurrentHP = newStoryProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
+          const result = calculateBossDamage(bossMaxHP, bossCurrentHP, bossDamage);
+
+          newStoryProgress.bossCurrentHP = {
+            ...newStoryProgress.bossCurrentHP,
+            [currentChapter.id]: result.remainingHP,
+          };
+
+          newStoryLogs.push(createLog(
+            currentChapter.id,
+            `你完成了子任务「${subtask.title}」，对${currentChapter.bossName}造成 ${bossDamage} 点伤害！`,
+            'damage',
+          ));
+
+          if (result.isDefeated) {
+            bossDefeated = true;
+            newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, currentChapter.id];
+            newStoryLogs.push(createLog(
+              currentChapter.id,
+              currentChapter.bossDefeatedText,
+              'story',
+            ));
+
+            const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
+            if (nextChapter) {
+              newStoryProgress.currentChapter = nextChapter.id;
+              newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
+              storyUnlocked = nextChapter.id;
+              newStoryLogs.push(createLog(
+                nextChapter.id,
+                nextChapter.storyText,
+                'story',
+              ));
+            }
           }
         }
+
+        set({
+          storyProgress: newStoryProgress,
+          storyLogs: newStoryLogs,
+        });
+
+        return { bossDamage, bossDefeated, storyUnlocked };
       },
 
       // ===== 分类操作 =====
@@ -492,6 +645,8 @@ export const useStore = create<StoreState>()(
       },
 
       deleteCategory: (id) => {
+        // 不允许删除 any 分类
+        if (id === ANY_CATEGORY_ID) return;
         set(state => ({
           categories: state.categories.filter(c => c.id !== id),
           tasks: state.tasks.map(t => t.categoryId === id ? { ...t, categoryId: null } : t),
@@ -593,17 +748,15 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'quest-planner-storage',
-      version: 3,
+      version: 5,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
         // v1/v2 -> v3: update categories, add new task fields, add knowledge link
         if (version < 3) {
-          // 迁移分类ID
           if (state.categories) {
             state.categories = defaultCategories;
           }
-          // 迁移任务的分类ID和新字段
           if (state.tasks) {
             state.tasks = state.tasks.map((t: any) => ({
               ...t,
@@ -612,17 +765,56 @@ export const useStore = create<StoreState>()(
               categoryId: t.categoryId ? (categoryIdMap[t.categoryId] || t.categoryId) : null,
             }));
           }
-          // 迁移知识的分类ID和链接字段
           if (state.knowledge) {
             state.knowledge = state.knowledge.map((k: any) => ({
               ...k,
               link: k.link || '',
               categoryId: k.categoryId ? (categoryIdMap[k.categoryId] || k.categoryId) : null,
             }));
-            // 如果没有知识，用种子数据
             if (state.knowledge.length === 0) {
               state.knowledge = seedKnowledge;
             }
+          }
+        }
+
+        // v3 -> v4: add 'any' category, add new repeat fields
+        if (version < 4) {
+          if (state.categories) {
+            const hasAny = state.categories.some((c: any) => c.id === 'cat-any');
+            if (!hasAny) {
+              state.categories = [...state.categories, { id: 'cat-any', name: 'any', color: '#0984e3' }];
+            }
+          }
+          if (state.tasks) {
+            state.tasks = state.tasks.map((t: any) => ({
+              ...t,
+              repeatWeekdays: t.repeatWeekdays || undefined,
+              repeatDates: t.repeatDates || undefined,
+            }));
+          }
+        }
+
+        // v4 -> v5: migrate 'custom' repeat type to 'holidays', add log type field
+        if (version < 5) {
+          if (state.tasks) {
+            state.tasks = state.tasks.map((t: any) => {
+              let repeat = t.repeat;
+              // 'custom' 类型迁移到 'holidays'
+              if (repeat === 'custom') repeat = 'holidays';
+              // 清理 repeatDates 字段（不再需要）
+              const { repeatDates, ...rest } = t;
+              return { ...rest, repeat };
+            });
+          }
+          // 为已有日志添加 type 字段
+          if (state.storyLogs) {
+            state.storyLogs = state.storyLogs.map((log: any) => {
+              if (log.type) return log;
+              // 根据文本内容推断类型
+              if (log.text.includes('伤害')) return { ...log, type: 'damage' };
+              if (log.text.includes('完成了') || log.text.includes('经验值')) return { ...log, type: 'task' };
+              return { ...log, type: 'story' };
+            });
           }
         }
 

@@ -5,15 +5,17 @@ import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
 import { BADGES } from '../data/badges';
 import {
-  IconBack, IconTrash, IconPlus, IconCheckCircle, IconRepeat, IconSubtask,
+  IconBack, IconTrash, IconPlus, IconCheckCircle, IconRepeat, IconSubtask, IconCheck, IconEdit,
 } from '../components/common/Icons';
 import type { TaskPriority, TaskStatus, RepeatType } from '../types';
 import './TaskDetailPage.css';
 
+const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+
 export default function TaskDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tasks, categories, addTask, updateTask, deleteTask, toggleTaskComplete, addSubtask, toggleSubtask } = useStore();
+  const { tasks, categories, addTask, updateTask, deleteTask, toggleTaskComplete, addSubtask, updateSubtask, deleteSubtask, toggleSubtask } = useStore();
   const addToast = useToastStore(s => s.addToast);
 
   const isNew = id === 'new' || !id;
@@ -26,8 +28,11 @@ export default function TaskDetailPage() {
   const [categoryId, setCategoryId] = useState<string>('');
   const [dueDate, setDueDate] = useState('');
   const [repeat, setRepeat] = useState<RepeatType>('none');
+  const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>([]);
   const [showDelete, setShowDelete] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('');
 
   // 子任务列表
   const subtasks = !isNew ? tasks.filter(t => t.parentId === id) : [];
@@ -41,11 +46,17 @@ export default function TaskDetailPage() {
       setCategoryId(existing.categoryId || '');
       setDueDate(existing.dueDate || '');
       setRepeat(existing.repeat || 'none');
+      setRepeatWeekdays(existing.repeatWeekdays || []);
     }
   }, [existing]);
 
   const handleSave = () => {
     if (!title.trim()) return;
+
+    const repeatData: Partial<{ repeat: RepeatType; repeatWeekdays: number[] }> = {
+      repeat,
+      repeatWeekdays: repeat === 'weekdays' ? repeatWeekdays : undefined,
+    };
 
     if (isNew) {
       addTask({
@@ -55,7 +66,7 @@ export default function TaskDetailPage() {
         priority,
         categoryId: categoryId || null,
         dueDate: dueDate || null,
-        repeat,
+        ...repeatData,
       });
       addToast({ icon: '✓', title: '任务已创建' });
     } else {
@@ -67,7 +78,7 @@ export default function TaskDetailPage() {
         priority,
         categoryId: categoryId || null,
         dueDate: dueDate || null,
-        repeat,
+        ...repeatData,
       });
 
       if (!wasDone && status === 'done') {
@@ -102,11 +113,43 @@ export default function TaskDetailPage() {
     addToast({ icon: '✓', title: '子任务已添加' });
   };
 
+  const handleStartEditSubtask = (subtaskId: string, currentTitle: string) => {
+    setEditingSubtaskId(subtaskId);
+    setEditingSubtaskTitle(currentTitle);
+  };
+
+  const handleSaveEditSubtask = () => {
+    if (!editingSubtaskId || !editingSubtaskTitle.trim()) return;
+    updateSubtask(editingSubtaskId, { title: editingSubtaskTitle.trim() });
+    setEditingSubtaskId(null);
+    setEditingSubtaskTitle('');
+    addToast({ icon: '✓', title: '子任务已更新' });
+  };
+
+  const handleCancelEditSubtask = () => {
+    setEditingSubtaskId(null);
+    setEditingSubtaskTitle('');
+  };
+
+  const handleDeleteSubtask = (subtaskId: string) => {
+    deleteSubtask(subtaskId);
+    addToast({ icon: '✗', title: '子任务已删除' });
+  };
+
+  const handleToggleWeekday = (day: number) => {
+    setRepeatWeekdays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
+  };
+
   const repeatLabels: Record<RepeatType, string> = {
     none: '不重复',
     daily: '每天',
     weekly: '每周',
     monthly: '每月',
+    weekdays: '自定义',
+    workdays: '法定工作日',
+    holidays: '法定节假日',
   };
 
   return (
@@ -195,6 +238,38 @@ export default function TaskDetailPage() {
               </button>
             ))}
           </div>
+
+          {/* 自定义周几重复 */}
+          {repeat === 'weekdays' && (
+            <div className="repeat-weekdays">
+              <p className="repeat-weekdays-hint">选择每周重复的日期</p>
+              <div className="weekday-selector">
+                {WEEKDAY_LABELS.map((label, idx) => (
+                  <button
+                    key={idx}
+                    className={`weekday-btn ${repeatWeekdays.includes(idx) ? 'active' : ''}`}
+                    onClick={() => handleToggleWeekday(idx)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 法定工作日提示 */}
+          {repeat === 'workdays' && (
+            <div className="repeat-info-hint">
+              <p>任务将在每个法定工作日（周一至周五，排除法定节假日，含调休工作日）自动重复。</p>
+            </div>
+          )}
+
+          {/* 法定节假日提示 */}
+          {repeat === 'holidays' && (
+            <div className="repeat-info-hint">
+              <p>任务将在每个法定节假日（元旦、春节、清明、劳动节、端午、中秋、国庆）自动重复。</p>
+            </div>
+          )}
         </div>
 
         {/* 子任务管理（仅编辑模式） */}
@@ -205,11 +280,49 @@ export default function TaskDetailPage() {
             </label>
             <div className="subtask-manage-list">
               {subtasks.map(st => (
-                <div key={st.id} className="subtask-manage-item" onClick={() => toggleSubtask(st.id)}>
-                  <span className={`subtask-check ${st.status === 'done' ? 'done' : ''}`}>
-                    {st.status === 'done' && <IconCheckCircle size={16} color="var(--color-primary)" />}
-                  </span>
-                  <span className={`subtask-manage-title ${st.status === 'done' ? 'done-text' : ''}`}>{st.title}</span>
+                <div key={st.id} className="subtask-manage-item">
+                  {editingSubtaskId === st.id ? (
+                    <>
+                      <input
+                        className="form-input subtask-edit-input"
+                        value={editingSubtaskTitle}
+                        onChange={e => setEditingSubtaskTitle(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleSaveEditSubtask();
+                          if (e.key === 'Escape') handleCancelEditSubtask();
+                        }}
+                        autoFocus
+                      />
+                      <button className="btn btn-primary btn-sm subtask-edit-confirm" onClick={handleSaveEditSubtask} disabled={!editingSubtaskTitle.trim()}>
+                        <IconCheck size={14} color="#fff" />
+                      </button>
+                      <button className="btn btn-secondary btn-sm subtask-edit-cancel" onClick={handleCancelEditSubtask}>
+                        取消
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className={`subtask-check ${st.status === 'done' ? 'done' : ''}`} onClick={() => {
+                        const result = toggleSubtask(st.id);
+                        if (result.bossDamage > 0) {
+                          addToast({ icon: '⚔', title: `子任务对 Boss 造成 ${result.bossDamage} 点伤害！` });
+                        }
+                        if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });
+                        if (result.storyUnlocked && result.storyUnlocked > 0) {
+                          addToast({ icon: '◆', title: '新章节已解锁！' });
+                        }
+                      }}>
+                        {st.status === 'done' && <IconCheckCircle size={16} color="var(--color-primary)" />}
+                      </span>
+                      <span className={`subtask-manage-title ${st.status === 'done' ? 'done-text' : ''}`}>{st.title}</span>
+                      <button className="subtask-action-btn subtask-edit-btn" onClick={() => handleStartEditSubtask(st.id, st.title)}>
+                        <IconEdit size={14} color="var(--color-text-light)" />
+                      </button>
+                      <button className="subtask-action-btn subtask-delete-btn" onClick={() => handleDeleteSubtask(st.id)}>
+                        <IconTrash size={14} color="var(--color-danger)" />
+                      </button>
+                    </>
+                  )}
                 </div>
               ))}
               {subtasks.length === 0 && (
@@ -247,6 +360,16 @@ export default function TaskDetailPage() {
           </button>
         </div>
       </div>
+
+      {/* 悬浮保存按钮 */}
+      <button
+        className={`floating-save-btn ${!title.trim() ? 'disabled' : ''}`}
+        onClick={handleSave}
+        disabled={!title.trim()}
+        aria-label="保存"
+      >
+        <IconCheck size={24} color="#fff" />
+      </button>
 
       <ConfirmDialog
         open={showDelete}

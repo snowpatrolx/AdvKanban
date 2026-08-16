@@ -5,13 +5,13 @@ import {
   useDroppable, useDraggable, closestCorners,
   type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core';
-import { useStore } from '../store/useStore';
+import { useStore, ANY_CATEGORY_ID } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { Modal } from '../components/common/Modal';
 import { BADGES } from '../data/badges';
 import {
   IconPlus, IconSearch, IconCalendar, IconCheckCircle, IconList, IconColumns,
-  IconFlame, IconRepeat, IconChevronDown, IconChevronRight, IconSubtask,
+  IconFlame, IconRepeat, IconChevronDown, IconChevronRight, IconSubtask, IconDrag,
 } from '../components/common/Icons';
 import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor } from '../utils/taskHelpers';
 import type { Task, TaskStatus, Category, TaskPriority } from '../types';
@@ -24,6 +24,7 @@ const COLUMNS: { id: TaskStatus; title: string; color: string }[] = [
 ];
 
 type ViewMode = 'list' | 'kanban';
+type StatusFilter = 'all' | TaskStatus;
 
 // 优先级排序权重
 function priorityWeight(p: TaskPriority): number {
@@ -37,12 +38,13 @@ function priorityWeight(p: TaskPriority): number {
 
 export default function HomeKanbanPage() {
   const navigate = useNavigate();
-  const { tasks, categories, userProfile, addTask, toggleTaskComplete, setTaskStatus, toggleSubtask } = useStore();
+  const { tasks, categories, userProfile, addTask, toggleTaskComplete, setTaskStatus, toggleSubtask, reorderTasks } = useStore();
   const addToast = useToastStore(s => s.addToast);
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('doing');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickTitle, setQuickTitle] = useState('');
   const [quickCategory, setQuickCategory] = useState('');
@@ -50,6 +52,8 @@ export default function HomeKanbanPage() {
 
   // Kanban drag state
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  // List drag state
+  const [activeListTask, setActiveListTask] = useState<Task | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
@@ -59,12 +63,20 @@ export default function HomeKanbanPage() {
     return tasks
       .filter(t => !t.parentId) // 只显示主任务
       .filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase()))
-      .filter(t => !filterCategory || t.categoryId === filterCategory);
-  }, [tasks, search, filterCategory]);
+      .filter(t => {
+        if (!filterCategory) return true;
+        // any 分类的任务在所有分类筛选下都显示
+        if (filterCategory !== ANY_CATEGORY_ID && t.categoryId === ANY_CATEGORY_ID) return true;
+        return t.categoryId === filterCategory;
+      })
+      .filter(t => {
+        if (statusFilter === 'all') return true;
+        return t.status === statusFilter;
+      });
+  }, [tasks, search, filterCategory, statusFilter]);
 
   const sortedListTasks = useMemo(() => {
     return [...filteredTasks]
-      .filter(t => t.status !== 'done')
       .sort((a, b) => {
         // 1. 优先级高的排前
         const pa = priorityWeight(a.priority);
@@ -83,15 +95,26 @@ export default function HomeKanbanPage() {
       });
   }, [filteredTasks]);
 
-  const todayTasks = sortedListTasks.filter(t => isToday(t.dueDate));
-  const otherTasks = sortedListTasks.filter(t => !isToday(t.dueDate));
+  // 在状态筛选为 all 时分今日/其他，否则显示全部筛选结果
+  const todayTasks = statusFilter === 'all' ? sortedListTasks.filter(t => isToday(t.dueDate)) : [];
+  const otherTasks = statusFilter === 'all'
+    ? sortedListTasks.filter(t => !isToday(t.dueDate))
+    : sortedListTasks;
 
   const tasksByStatus = useMemo(() => {
+    // 看板视图不受状态筛选影响（看板本身就是按状态分列）
+    const allFiltered = tasks
+      .filter(t => !t.parentId)
+      .filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase()))
+      .filter(t => {
+        if (!filterCategory) return true;
+        if (filterCategory !== ANY_CATEGORY_ID && t.categoryId === ANY_CATEGORY_ID) return true;
+        return t.categoryId === filterCategory;
+      });
     const map: Record<TaskStatus, Task[]> = { todo: [], doing: [], done: [] };
-    filteredTasks.forEach(t => map[t.status].push(t));
+    allFiltered.forEach(t => map[t.status].push(t));
     Object.values(map).forEach(arr => {
       arr.sort((a, b) => {
-        // 看板也按优先级排序
         const pa = priorityWeight(a.priority);
         const pb = priorityWeight(b.priority);
         if (pa !== pb) return pa - pb;
@@ -99,7 +122,7 @@ export default function HomeKanbanPage() {
       });
     });
     return map;
-  }, [filteredTasks]);
+  }, [tasks, search, filterCategory]);
 
   const handleQuickAdd = () => {
     if (!quickTitle.trim()) return;
@@ -125,6 +148,17 @@ export default function HomeKanbanPage() {
       const badge = BADGES.find(b => b.id === badgeId);
       if (badge) addToast({ icon: '★', title: `获得徽章：${badge.name}` });
     });
+    if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });
+    if (result.storyUnlocked && result.storyUnlocked > 0) {
+      addToast({ icon: '◆', title: '新章节已解锁！' });
+    }
+  };
+
+  const handleToggleSubtask = (id: string) => {
+    const result = toggleSubtask(id);
+    if (result.bossDamage > 0) {
+      addToast({ icon: '⚔', title: `子任务对 Boss 造成 ${result.bossDamage} 点伤害！` });
+    }
     if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });
     if (result.storyUnlocked && result.storyUnlocked > 0) {
       addToast({ icon: '◆', title: '新章节已解锁！' });
@@ -170,6 +204,22 @@ export default function HomeKanbanPage() {
     }
   };
 
+  // List drag handlers (reorder)
+  const handleListDragStart = (e: DragStartEvent) => {
+    const task = sortedListTasks.find(t => t.id === e.active.id);
+    setActiveListTask(task || null);
+  };
+
+  const handleListDragEnd = (e: DragEndEvent) => {
+    setActiveListTask(null);
+    const { active, over } = e;
+    if (!over) return;
+    const activeId = active.id as string;
+    const overId = over.id as string;
+    if (activeId === overId) return;
+    reorderTasks(activeId, overId);
+  };
+
   return (
     <div className="page home-kanban-page">
       {/* 顶部工具栏 */}
@@ -199,17 +249,33 @@ export default function HomeKanbanPage() {
         </div>
       </div>
 
+      {/* 状态筛选按钮 */}
+      <div className="hk-status-filter">
+        <button
+          className={`status-filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
+          onClick={() => setStatusFilter('all')}
+        >
+          全部
+        </button>
+        {COLUMNS.map(col => (
+          <button
+            key={col.id}
+            className={`status-filter-btn ${statusFilter === col.id ? 'active' : ''}`}
+            style={statusFilter === col.id ? { background: col.color, color: '#fff', borderColor: col.color } : {}}
+            onClick={() => setStatusFilter(col.id)}
+          >
+            <span className="status-filter-dot" style={{ background: col.color }} />
+            {col.title}
+            <span className="status-filter-count">{tasksByStatus[col.id].length}</span>
+          </button>
+        ))}
+      </div>
+
       {/* 简洁统计条 */}
       <div className="hk-stats-bar">
         <span className="hk-stat-item">
           <IconFlame size={14} color="#e17055" /> {userProfile.currentStreak} 天连续
         </span>
-        <span className="hk-stat-divider">|</span>
-        <span className="hk-stat-item">待办 {tasksByStatus.todo.length}</span>
-        <span className="hk-stat-divider">|</span>
-        <span className="hk-stat-item">进行中 {tasksByStatus.doing.length}</span>
-        <span className="hk-stat-divider">|</span>
-        <span className="hk-stat-item">已完成 {tasksByStatus.done.length}</span>
       </div>
 
       {/* 分类筛选 */}
@@ -233,12 +299,25 @@ export default function HomeKanbanPage() {
 
       {/* 列表视图 */}
       {viewMode === 'list' && (
-        <>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleListDragStart}
+          onDragEnd={handleListDragEnd}
+        >
           {todayTasks.length > 0 && (
             <div className="task-section">
               <h3 className="task-section-title">今日任务</h3>
               {todayTasks.map(t => (
-                <ListTaskCard key={t.id} task={t} onToggle={handleToggle} onClick={() => navigate(`/task/${t.id}`)} categories={categories} allTasks={tasks} onToggleSubtask={toggleSubtask} />
+                <DraggableListTaskCard
+                  key={t.id}
+                  task={t}
+                  onToggle={handleToggle}
+                  onClick={() => navigate(`/task/${t.id}`)}
+                  categories={categories}
+                  allTasks={tasks}
+                  onToggleSubtask={handleToggleSubtask}
+                />
               ))}
             </div>
           )}
@@ -255,10 +334,31 @@ export default function HomeKanbanPage() {
               <h3 className="task-section-title">其他任务</h3>
             )}
             {otherTasks.map(t => (
-              <ListTaskCard key={t.id} task={t} onToggle={handleToggle} onClick={() => navigate(`/task/${t.id}`)} categories={categories} allTasks={tasks} onToggleSubtask={toggleSubtask} />
+              <DraggableListTaskCard
+                key={t.id}
+                task={t}
+                onToggle={handleToggle}
+                onClick={() => navigate(`/task/${t.id}`)}
+                categories={categories}
+                allTasks={tasks}
+                onToggleSubtask={handleToggleSubtask}
+              />
             ))}
           </div>
-        </>
+          <DragOverlay>
+            {activeListTask ? (
+              <ListTaskCard
+                task={activeListTask}
+                onToggle={() => {}}
+                onClick={() => {}}
+                categories={categories}
+                allTasks={tasks}
+                onToggleSubtask={() => {}}
+                dragging
+              />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {/* 看板视图 */}
@@ -329,14 +429,37 @@ export default function HomeKanbanPage() {
   );
 }
 
-// ===== List Task Card (with subtask display) =====
-function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleSubtask }: {
+// ===== Draggable List Task Card =====
+function DraggableListTaskCard(props: {
   task: Task;
   onToggle: (id: string) => void;
   onClick: () => void;
   categories: Category[];
   allTasks: Task[];
   onToggleSubtask: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.task.id });
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
+
+  return (
+    <div ref={setNodeRef} style={style} className={`draggable-list-card ${isDragging ? 'dragging-active' : ''}`}>
+      <button className="list-drag-handle" {...listeners} {...attributes}>
+        <IconDrag size={16} color="var(--color-text-light)" />
+      </button>
+      <ListTaskCard {...props} />
+    </div>
+  );
+}
+
+// ===== List Task Card (with subtask display) =====
+function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleSubtask, dragging }: {
+  task: Task;
+  onToggle: (id: string) => void;
+  onClick: () => void;
+  categories: Category[];
+  allTasks: Task[];
+  onToggleSubtask: (id: string) => void;
+  dragging?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const overdue = isOverdue(task.dueDate, task.status);
@@ -349,7 +472,7 @@ function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleS
   const firstIncompleteSubtask = incompleteSubtasks[0];
 
   return (
-    <div className={`task-card ${overdue ? 'overdue' : ''}`}>
+    <div className={`task-card ${overdue ? 'overdue' : ''} ${dragging ? 'dragging' : ''}`}>
       <button
         className="task-checkbox"
         onClick={(e) => { e.stopPropagation(); onToggle(task.id); }}

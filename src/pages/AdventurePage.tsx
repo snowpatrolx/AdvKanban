@@ -1,13 +1,19 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { CHAPTERS } from '../data/chapters';
-import { checkChapterCondition } from '../utils/gamification';
-import { IconCheck, IconPin, IconLock, IconMap, IconSword } from '../components/common/Icons';
+import { IconCheck, IconPin, IconLock, IconMap, IconSword, IconBook } from '../components/common/Icons';
+import type { LogType } from '../types';
 import './AdventurePage.css';
+
+const LOG_TYPE_LABELS: Record<LogType, string> = {
+  damage: '伤害',
+  task: '任务',
+  story: '剧情',
+};
 
 export default function AdventurePage() {
   const { storyProgress, storyLogs, userProfile, knowledge } = useStore();
-  const [activeTab, setActiveTab] = useState<'map' | 'logs'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'logs'>('logs');
 
   const currentChapter = CHAPTERS.find(c => c.id === storyProgress.currentChapter);
 
@@ -40,14 +46,28 @@ export default function AdventurePage() {
         <h1 className="adventure-page-title">冒险故事</h1>
       </div>
 
-      {/* 当前章节概览 */}
+      {/* 当前章节 - 剧情区 */}
       {currentChapter && (
-        <div className="adventure-current-card">
-          <div className="adventure-current-header">
+        <div className="adventure-story-card">
+          <div className="adventure-story-card-header">
             <span className="adventure-chapter-tag">第{currentChapter.id}章</span>
             <span className="adventure-area">{currentChapter.area}</span>
           </div>
-          <h2 className="adventure-current-title">{currentChapter.title}</h2>
+          <h2 className="adventure-story-card-title">{currentChapter.title}</h2>
+          <div className="adventure-story-divider" />
+          <div className="adventure-story-narrative">
+            <IconBook size={14} color="var(--color-primary)" className="adventure-story-icon" />
+            <p className="adventure-story-text">{currentChapter.storyText}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 当前章节 - 进度区 */}
+      {currentChapter && (
+        <div className="adventure-progress-card">
+          <div className="adventure-progress-card-header">
+            <span className="adventure-progress-label">冒险进度</span>
+          </div>
 
           {/* Boss HP */}
           {currentChapter.bossName && (
@@ -69,7 +89,7 @@ export default function AdventurePage() {
                   }}
                 />
               </div>
-              <p className="adventure-boss-hint">完成任务即可对 Boss 造成伤害</p>
+              <p className="adventure-boss-hint">完成任务或子任务即可对 Boss 造成伤害</p>
             </div>
           )}
 
@@ -90,21 +110,19 @@ export default function AdventurePage() {
               </p>
             </div>
           )}
-
-          <div className="adventure-story-text">{currentChapter.storyText}</div>
         </div>
       )}
 
       {/* Tab 切换 */}
       <div className="adventure-tabs">
         <button
-          className={`adventure-tab ${activeTab === 'map' ? 'active' : ''}`}
-          onClick={() => setActiveTab('map')}
-        >地图</button>
-        <button
           className={`adventure-tab ${activeTab === 'logs' ? 'active' : ''}`}
           onClick={() => setActiveTab('logs')}
         >故事日志</button>
+        <button
+          className={`adventure-tab ${activeTab === 'map' ? 'active' : ''}`}
+          onClick={() => setActiveTab('map')}
+        >地图</button>
       </div>
 
       {activeTab === 'map' ? (
@@ -154,7 +172,7 @@ export default function AdventurePage() {
           {sortedLogs.length === 0 ? (
             <div className="empty-state">
               <div className="empty-state-icon-flat">
-                <IconMap size={48} color="var(--color-text-light)" />
+                <IconBook size={48} color="var(--color-text-light)" />
               </div>
               <p>完成任务后会自动生成故事日志</p>
             </div>
@@ -166,10 +184,15 @@ export default function AdventurePage() {
                 <div key={chapter.id} className="adventure-log-section">
                   <h4 className="adventure-log-chapter">第{chapter.id}章 · {chapter.title}</h4>
                   {logs.map(log => (
-                    <div key={log.id} className="adventure-log-item">
-                      <span className="adventure-log-time">
-                        {new Date(log.createdAt).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                    <div key={log.id} className={`adventure-log-item log-type-${log.type || 'story'}`}>
+                      <div className="adventure-log-header">
+                        <span className={`adventure-log-badge log-badge-${log.type || 'story'}`}>
+                          {LOG_TYPE_LABELS[log.type as LogType] || '剧情'}
+                        </span>
+                        <span className="adventure-log-time">
+                          {new Date(log.createdAt).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
                       <p className="adventure-log-text">{log.text}</p>
                     </div>
                   ))}

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStore } from '../store/useStore';
+import { useStore, ANY_CATEGORY_ID } from '../store/useStore';
 import { getCategoryName, getCategoryColor } from '../utils/taskHelpers';
 import { IconBook, IconPlus, IconSearch, IconLink } from '../components/common/Icons';
 import './KnowledgePage.css';
@@ -14,7 +14,12 @@ export default function KnowledgePage() {
   const filtered = useMemo(() => {
     return knowledge
       .filter(k => !search || k.title.toLowerCase().includes(search.toLowerCase()) || k.content.toLowerCase().includes(search.toLowerCase()))
-      .filter(k => !filterCategory || k.categoryId === filterCategory)
+      .filter(k => {
+        if (!filterCategory) return true;
+        // any 分类的知识在所有分类筛选下都显示
+        if (filterCategory !== ANY_CATEGORY_ID && k.categoryId === ANY_CATEGORY_ID) return true;
+        return k.categoryId === filterCategory;
+      })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [knowledge, search, filterCategory]);
 
