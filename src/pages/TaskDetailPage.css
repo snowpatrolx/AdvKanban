@@ -253,3 +253,78 @@
   box-shadow: none;
   cursor: not-allowed;
 }
+
+/* 视频链接区域 */
+.video-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--color-bg);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.video-toggle-btn:active {
+  border-color: var(--color-primary);
+}
+
+.video-toggle-arrow {
+  margin-left: auto;
+  font-size: 18px;
+  color: var(--color-text-light);
+}
+
+.video-section {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.video-preview {
+  margin-top: 4px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #000;
+}
+
+.video-iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: none;
+  display: block;
+}
+
+.video-link-external {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(108, 92, 231, 0.06);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.video-note-label {
+  margin-top: 4px;
+}
+
+.video-note-textarea {
+  min-height: 120px;
+}
+
+.video-note-hint {
+  font-size: 12px;
+  color: var(--color-text-light);
+  line-height: 1.4;
+}

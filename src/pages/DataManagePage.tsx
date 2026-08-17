@@ -3,16 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
-import { exportTasksToExcel, downloadJSON } from '../utils/export';
+import { exportTasksToExcel, downloadJSON, exportWeeklyReport } from '../utils/export';
 import {
   IconBack, IconChart, IconDatabase, IconDownload, IconUpload, IconFolder,
-  IconRefresh, IconTag, IconBook, IconWarning,
+  IconRefresh, IconTag, IconBook, IconWarning, IconFileText,
 } from '../components/common/Icons';
 import './DataManagePage.css';
 
 export default function DataManagePage() {
   const navigate = useNavigate();
-  const { tasks, categories, knowledge, exportJSON, importJSON, resetAll } = useStore();
+  const { tasks, categories, knowledge, dailyRecords, userProfile, exportJSON, importJSON, resetAll } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const fileRef = useRef<HTMLInputElement>(null);
   const [showReset, setShowReset] = useState(false);
@@ -24,6 +24,11 @@ export default function DataManagePage() {
     }
     exportTasksToExcel(tasks, categories);
     addToast({ icon: '✓', title: 'Excel 已导出' });
+  };
+
+  const handleExportWeekly = () => {
+    exportWeeklyReport(tasks, categories, dailyRecords, userProfile);
+    addToast({ icon: '✓', title: '周报已导出' });
   };
 
   const handleExportJSON = () => {
@@ -88,8 +93,11 @@ export default function DataManagePage() {
       {/* 导出 */}
       <div className="card">
         <h3 className="data-section-title">导出数据</h3>
-        <button className="btn btn-primary btn-block data-action-btn" onClick={handleExportExcel}>
-          <IconChart size={18} color="#fff" /> 导出任务为 Excel
+        <button className="btn btn-primary btn-block data-action-btn" onClick={handleExportWeekly}>
+          <IconFileText size={18} color="#fff" /> 导出近一周任务报告
+        </button>
+        <button className="btn btn-secondary btn-block data-action-btn" onClick={handleExportExcel}>
+          <IconChart size={18} color="var(--color-text)" /> 导出任务为 Excel
         </button>
         <button className="btn btn-secondary btn-block data-action-btn" onClick={handleExportJSON}>
           <IconDownload size={18} color="var(--color-text)" /> 导出完整 JSON 备份

@@ -57,7 +57,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.05';
+export const APP_VERSION = '1.06';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -664,6 +664,8 @@ export const useStore = create<StoreState>()(
           content: data.content || '',
           categoryId: data.categoryId || null,
           link: data.link || '',
+          videoLink: data.videoLink || '',
+          videoNote: data.videoNote || '',
           createdAt: now,
           updatedAt: now,
         };

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
-import { IconBack, IconTrash, IconLink } from '../components/common/Icons';
+import { IconBack, IconTrash, IconLink, IconVideo, IconExternalLink } from '../components/common/Icons';
 import './TaskDetailPage.css';
 
 export default function KnowledgeDetailPage() {
@@ -19,6 +19,9 @@ export default function KnowledgeDetailPage() {
   const [content, setContent] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [link, setLink] = useState('');
+  const [videoLink, setVideoLink] = useState('');
+  const [videoNote, setVideoNote] = useState('');
+  const [showVideoSection, setShowVideoSection] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => {
@@ -27,6 +30,9 @@ export default function KnowledgeDetailPage() {
       setContent(existing.content);
       setCategoryId(existing.categoryId || '');
       setLink(existing.link || '');
+      setVideoLink(existing.videoLink || '');
+      setVideoNote(existing.videoNote || '');
+      if (existing.videoLink) setShowVideoSection(true);
     }
   }, [existing]);
 
@@ -37,6 +43,10 @@ export default function KnowledgeDetailPage() {
     if (cleanLink && !cleanLink.match(/^https?:\/\//)) {
       cleanLink = 'https://' + cleanLink;
     }
+    let cleanVideoLink = videoLink.trim();
+    if (cleanVideoLink && !cleanVideoLink.match(/^https?:\/\//)) {
+      cleanVideoLink = 'https://' + cleanVideoLink;
+    }
 
     if (isNew) {
       addKnowledge({
@@ -44,6 +54,8 @@ export default function KnowledgeDetailPage() {
         content: content.trim(),
         categoryId: categoryId || null,
         link: cleanLink,
+        videoLink: cleanVideoLink,
+        videoNote: videoNote.trim(),
       });
       addToast({ icon: '★', title: '知识已创建', subtitle: '+5 经验值' });
     } else {
@@ -52,6 +64,8 @@ export default function KnowledgeDetailPage() {
         content: content.trim(),
         categoryId: categoryId || null,
         link: cleanLink,
+        videoLink: cleanVideoLink,
+        videoNote: videoNote.trim(),
       });
       addToast({ icon: '✓', title: '知识已保存' });
     }
@@ -66,6 +80,33 @@ export default function KnowledgeDetailPage() {
     setShowDelete(false);
     navigate('/knowledge');
   };
+
+  // 检测视频平台
+  const getVideoPlatform = (url: string): { name: string; embedUrl?: string } => {
+    if (!url) return { name: '' };
+    if (url.includes('bilibili.com') || url.includes('b23.tv')) {
+      const bvMatch = url.match(/BV\w+/);
+      if (bvMatch) {
+        return { name: 'Bilibili', embedUrl: `https://player.bilibili.com/player.html?bvid=${bvMatch[0]}&high_quality=1` };
+      }
+      return { name: 'Bilibili' };
+    }
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      let videoId = '';
+      if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
+      } else {
+        videoId = url.match(/[?&]v=([^&]+)/)?.[1] || '';
+      }
+      if (videoId) {
+        return { name: 'YouTube', embedUrl: `https://www.youtube.com/embed/${videoId}` };
+      }
+      return { name: 'YouTube' };
+    }
+    return { name: '视频' };
+  };
+
+  const videoPlatform = getVideoPlatform(videoLink);
 
   return (
     <div className="page task-detail-page">
@@ -117,6 +158,67 @@ export default function KnowledgeDetailPage() {
           />
         </div>
 
+        {/* 视频链接 */}
+        <div className="form-group">
+          <button
+            type="button"
+            className="video-toggle-btn"
+            onClick={() => setShowVideoSection(!showVideoSection)}
+          >
+            <IconVideo size={16} color="var(--color-primary)" />
+            <span>视频链接{videoLink ? `（${videoPlatform.name}）` : ''}</span>
+            <span className="video-toggle-arrow">{showVideoSection ? '−' : '+'}</span>
+          </button>
+
+          {showVideoSection && (
+            <div className="video-section">
+              <input
+                className="form-input"
+                placeholder="粘贴视频链接（支持 Bilibili / YouTube）"
+                value={videoLink}
+                onChange={e => setVideoLink(e.target.value)}
+                type="url"
+              />
+
+              {/* 视频预览 */}
+              {videoLink && videoPlatform.embedUrl && (
+                <div className="video-preview">
+                  <iframe
+                    src={videoPlatform.embedUrl}
+                    title="视频预览"
+                    className="video-iframe"
+                    allowFullScreen
+                    scrolling="no"
+                  />
+                </div>
+              )}
+              {videoLink && !videoPlatform.embedUrl && (
+                <a
+                  href={videoLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="video-link-external"
+                >
+                  <IconExternalLink size={14} color="var(--color-primary)" />
+                  <span>打开视频</span>
+                </a>
+              )}
+
+              {/* 视频笔记/文案 */}
+              <label className="form-label video-note-label">视频笔记 / 文案</label>
+              <textarea
+                className="form-textarea video-note-textarea"
+                placeholder="在这里记录视频中的要点、文案或笔记...&#10;&#10;提示：可以边看视频边记录关键内容"
+                value={videoNote}
+                onChange={e => setVideoNote(e.target.value)}
+              />
+              <p className="video-note-hint">
+                将视频中的关键内容整理为文字笔记，方便日后查阅
+              </p>
+            </div>
+          )}
+        </div>
+
         <div className="form-group">
           <label className="form-label">分类</label>
           <select className="form-select" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
@@ -143,6 +245,15 @@ export default function KnowledgeDetailPage() {
             <span>更新时间：{new Date(existing.updatedAt).toLocaleString('zh-CN')}</span>
           </div>
         )}
+
+        {/* 悬浮保存按钮 */}
+        <button
+          className="floating-save-btn"
+          onClick={handleSave}
+          disabled={!title.trim()}
+        >
+          {isNew ? '创建' : '保存'}
+        </button>
 
         <div className="task-form-actions">
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>取消</button>

@@ -2,6 +2,198 @@
   padding-top: 12px;
 }
 
+.knowledge-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.knowledge-analysis-btn {
+  padding: 6px 10px;
+}
+
+/* AI 分析面板 */
+.knowledge-analysis-panel {
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 12px;
+  animation: kaSlideIn 0.3s ease;
+}
+
+@keyframes kaSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ka-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 14px;
+}
+
+.ka-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ka-stat {
+  text-align: center;
+  padding: 10px 4px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.ka-stat-num {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.ka-stat-label {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-light);
+  margin-top: 2px;
+}
+
+.ka-section {
+  margin-top: 14px;
+}
+
+.ka-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+.ka-category-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ka-category-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ka-cat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ka-cat-name {
+  font-size: 12px;
+  width: 40px;
+  flex-shrink: 0;
+  color: var(--color-text);
+}
+
+.ka-cat-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ka-cat-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.ka-cat-count {
+  font-size: 12px;
+  width: 24px;
+  text-align: right;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.ka-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ka-keyword {
+  padding: 4px 10px;
+  background: rgba(108, 92, 231, 0.08);
+  color: var(--color-primary);
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.ka-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ka-suggestion {
+  display: flex;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.ka-suggestion-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.ka-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ka-recent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ka-recent-item:active {
+  background: var(--color-border);
+}
+
+.ka-recent-title {
+  font-size: 13px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.ka-recent-date {
+  font-size: 11px;
+  color: var(--color-text-light);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
 .knowledge-list {
   display: flex;
   flex-direction: column;
@@ -26,10 +218,13 @@
   margin-bottom: 6px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 4px;
 }
 
-.knowledge-link-icon {
+.knowledge-card-icons {
+  display: flex;
+  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -42,6 +237,25 @@
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.knowledge-card-video-note {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(108, 92, 231, 0.04);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+}
+
+.knowledge-card-video-note span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .knowledge-card-meta {

@@ -36,6 +36,8 @@ export interface Knowledge {
   content: string;
   categoryId: string | null;
   link: string;                 // 文章链接 URL
+  videoLink?: string;           // 视频链接 URL
+  videoNote?: string;           // 视频笔记/文案
   createdAt: string;
   updatedAt: string;
 }
