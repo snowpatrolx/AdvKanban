@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
-import { IconBack, IconTrash, IconLink, IconVideo, IconExternalLink } from '../components/common/Icons';
+import { IconBack, IconTrash, IconLink, IconVideo, IconExternalLink, IconSparkles } from '../components/common/Icons';
+import { generateVideoNote, summarizeKnowledge } from '../utils/aiSummary';
 import './TaskDetailPage.css';
 
 export default function KnowledgeDetailPage() {
@@ -23,6 +24,8 @@ export default function KnowledgeDetailPage() {
   const [videoNote, setVideoNote] = useState('');
   const [showVideoSection, setShowVideoSection] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     if (existing) {
@@ -35,6 +38,29 @@ export default function KnowledgeDetailPage() {
       if (existing.videoLink) setShowVideoSection(true);
     }
   }, [existing]);
+
+  // 生成视频文案
+  const handleGenerateVideoNote = () => {
+    setAiLoading(true);
+    setTimeout(() => {
+      const platform = getVideoPlatform(videoLink).name || '视频';
+      const generated = generateVideoNote(title, videoNote, platform);
+      setVideoNote(generated);
+      setAiLoading(false);
+      addToast({ icon: '✓', title: '视频文案已生成' });
+    }, 600);
+  };
+
+  // AI 总结知识
+  const handleSummarize = () => {
+    setAiLoading(true);
+    setShowSummary(true);
+    setTimeout(() => {
+      setAiLoading(false);
+    }, 500);
+  };
+
+  const summary = (title || content) ? summarizeKnowledge(title, content, videoNote) : null;
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -82,8 +108,17 @@ export default function KnowledgeDetailPage() {
   };
 
   // 检测视频平台
-  const getVideoPlatform = (url: string): { name: string; embedUrl?: string } => {
+  const getVideoPlatform = (url: string): { name: string; embedUrl?: string; isDouyin?: boolean } => {
     if (!url) return { name: '' };
+    // 抖音
+    if (url.includes('douyin.com') || url.includes('iesdouyin.com')) {
+      // 尝试提取视频ID
+      const videoMatch = url.match(/video\/(\d+)/) || url.match(/\/v\/([^/?]+)/);
+      if (videoMatch) {
+        return { name: '抖音', embedUrl: `https://www.douyin.com/video/${videoMatch[1]}`, isDouyin: true };
+      }
+      return { name: '抖音', isDouyin: true };
+    }
     if (url.includes('bilibili.com') || url.includes('b23.tv')) {
       const bvMatch = url.match(/BV\w+/);
       if (bvMatch) {
@@ -135,7 +170,18 @@ export default function KnowledgeDetailPage() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">内容 *</label>
+          <div className="content-header">
+            <label className="form-label">内容 *</label>
+            <button
+              type="button"
+              className="ai-action-btn"
+              onClick={handleSummarize}
+              disabled={aiLoading || !content.trim()}
+            >
+              <IconSparkles size={14} color="var(--color-primary)" />
+              <span>AI 总结</span>
+            </button>
+          </div>
           <textarea
             className="form-textarea knowledge-textarea"
             placeholder="输入知识内容（支持简单 Markdown）..."
@@ -143,6 +189,81 @@ export default function KnowledgeDetailPage() {
             onChange={e => setContent(e.target.value)}
           />
         </div>
+
+        {/* AI 总结面板 */}
+        {showSummary && summary && (
+          <div className="ai-summary-panel">
+            <div className="ai-summary-header">
+              <IconSparkles size={16} color="var(--color-primary)" />
+              <span>AI 知识总结</span>
+              <button
+                className="ai-summary-close"
+                onClick={() => setShowSummary(false)}
+              >×</button>
+            </div>
+
+            <div className="ai-summary-section">
+              <div className="ai-summary-section-title">📝 摘要</div>
+              <p className="ai-summary-text">{summary.summary || '暂无内容可总结'}</p>
+            </div>
+
+            {summary.keyPoints.length > 0 && (
+              <div className="ai-summary-section">
+                <div className="ai-summary-section-title">🎯 核心要点</div>
+                <ul className="ai-summary-list">
+                  {summary.keyPoints.map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {summary.actionItems.length > 0 && (
+              <div className="ai-summary-section">
+                <div className="ai-summary-section-title">✅ 行动清单</div>
+                <ul className="ai-summary-list action">
+                  {summary.actionItems.map((item, i) => (
+                    <li key={i}>☐ {item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {summary.keywords.length > 0 && (
+              <div className="ai-summary-section">
+                <div className="ai-summary-section-title">🏷️ 关键词</div>
+                <div className="ai-summary-keywords">
+                  {summary.keywords.map(k => (
+                    <span key={k.word} className="ai-keyword-tag">#{k.word}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="ai-summary-actions">
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => {
+                  const text = summary.structure;
+                  navigator.clipboard?.writeText(text);
+                  addToast({ icon: '✓', title: '已复制到剪贴板' });
+                }}
+              >
+                复制全文
+              </button>
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() => {
+                  setContent(prev => prev + '\n\n---\n' + summary.structure);
+                  setShowSummary(false);
+                  addToast({ icon: '✓', title: '已插入到内容中' });
+                }}
+              >
+                插入到内容
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 文章链接 */}
         <div className="form-group">
@@ -174,7 +295,7 @@ export default function KnowledgeDetailPage() {
             <div className="video-section">
               <input
                 className="form-input"
-                placeholder="粘贴视频链接（支持 Bilibili / YouTube）"
+                placeholder="粘贴视频链接（支持 Bilibili / YouTube / 抖音）"
                 value={videoLink}
                 onChange={e => setVideoLink(e.target.value)}
                 type="url"
@@ -205,10 +326,21 @@ export default function KnowledgeDetailPage() {
               )}
 
               {/* 视频笔记/文案 */}
-              <label className="form-label video-note-label">视频笔记 / 文案</label>
+              <div className="video-note-header">
+                <label className="form-label video-note-label">视频笔记 / 文案</label>
+                <button
+                  type="button"
+                  className="ai-action-btn"
+                  onClick={handleGenerateVideoNote}
+                  disabled={aiLoading}
+                >
+                  <IconSparkles size={14} color="var(--color-primary)" />
+                  <span>{aiLoading ? '生成中...' : '一键整理'}</span>
+                </button>
+              </div>
               <textarea
                 className="form-textarea video-note-textarea"
-                placeholder="在这里记录视频中的要点、文案或笔记...&#10;&#10;提示：可以边看视频边记录关键内容"
+                placeholder="在这里记录视频中的要点、文案或笔记...&#10;&#10;点击「一键整理」自动生成结构化文案"
                 value={videoNote}
                 onChange={e => setVideoNote(e.target.value)}
               />

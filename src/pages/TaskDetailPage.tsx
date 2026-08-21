@@ -270,6 +270,14 @@ export default function TaskDetailPage() {
               <p>任务将在每个法定节假日（元旦、春节、清明、劳动节、端午、中秋、国庆）自动重复。</p>
             </div>
           )}
+
+          {/* 重复计数 */}
+          {!isNew && repeat !== 'none' && existing && (
+            <div className="repeat-count-info">
+              <span className="repeat-count-badge">第 {existing.repeatCount || 0} 次</span>
+              <span className="repeat-count-desc">本任务已重复 {existing.repeatCount || 0} 次</span>
+            </div>
+          )}
         </div>
 
         {/* 子任务管理（仅编辑模式） */}

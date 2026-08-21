@@ -118,6 +118,32 @@
   line-height: 1.5;
 }
 
+/* 重复计数 */
+.repeat-count-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 184, 148, 0.06);
+  border-radius: var(--radius-sm);
+}
+
+.repeat-count-badge {
+  background: linear-gradient(135deg, #00b894, #00cec9);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.repeat-count-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
 /* 子任务管理 */
 .subtask-manage-list {
   display: flex;
@@ -327,4 +353,158 @@
   font-size: 12px;
   color: var(--color-text-light);
   line-height: 1.4;
+}
+
+/* AI 操作按钮 */
+.ai-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(108, 92, 231, 0.08);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-action-btn:active {
+  background: rgba(108, 92, 231, 0.15);
+  transform: scale(0.96);
+}
+
+.ai-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 内容头部 */
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.content-header .form-label {
+  margin-bottom: 0;
+}
+
+/* 视频笔记头部 */
+.video-note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.video-note-header .video-note-label {
+  margin-top: 0;
+}
+
+/* AI 总结面板 */
+.ai-summary-panel {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.06), rgba(156, 89, 231, 0.04));
+  border: 1.5px solid rgba(108, 92, 231, 0.2);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 16px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ai-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(108, 92, 231, 0.1);
+}
+
+.ai-summary-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--color-text-light);
+  cursor: pointer;
+  padding: 2px 8px;
+  line-height: 1;
+}
+
+.ai-summary-section {
+  margin-bottom: 12px;
+}
+
+.ai-summary-section:last-of-type {
+  margin-bottom: 14px;
+}
+
+.ai-summary-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+
+.ai-summary-text {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.ai-summary-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.ai-summary-list li {
+  margin-bottom: 2px;
+}
+
+.ai-summary-list.action {
+  list-style: none;
+  padding-left: 0;
+}
+
+.ai-summary-list.action li {
+  margin-bottom: 4px;
+}
+
+.ai-summary-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ai-keyword-tag {
+  padding: 3px 10px;
+  background: rgba(108, 92, 231, 0.1);
+  color: var(--color-primary);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ai-summary-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 10px;
+  border-top: 1px solid rgba(108, 92, 231, 0.1);
 }

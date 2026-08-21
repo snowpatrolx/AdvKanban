@@ -487,7 +487,10 @@ function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleS
         <div className={`task-card-title ${task.status === 'done' ? 'done-text' : ''}`}>
           {task.title}
           {task.repeat !== 'none' && (
-            <IconRepeat size={14} color="var(--color-text-light)" className="task-repeat-icon" />
+            <span className="task-repeat-badge">
+              <IconRepeat size={12} color="var(--color-text-light)" />
+              <span className="task-repeat-count">{task.repeatCount || 0}</span>
+            </span>
           )}
         </div>
         <div className="task-card-meta">
@@ -600,7 +603,10 @@ function KanbanCard({
         <div className={`kanban-card-title ${task.status === 'done' ? 'done' : ''}`}>
           {task.title}
           {task.repeat !== 'none' && (
-            <IconRepeat size={12} color="var(--color-text-light)" className="task-repeat-icon" />
+            <span className="task-repeat-badge kanban">
+              <IconRepeat size={11} color="var(--color-text-light)" />
+              <span className="task-repeat-count">{task.repeatCount || 0}</span>
+            </span>
           )}
         </div>
         <div className="kanban-card-meta">

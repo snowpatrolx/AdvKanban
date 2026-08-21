@@ -57,7 +57,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.06';
+export const APP_VERSION = '1.07';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -242,6 +242,7 @@ export const useStore = create<StoreState>()(
           order: maxOrder + 1,
           repeat: data.repeat || 'none',
           repeatWeekdays: data.repeatWeekdays,
+          repeatCount: data.repeatCount ?? 0,
           parentId: data.parentId || null,
         };
         set(state => ({ tasks: [...state.tasks, task] }));
@@ -303,6 +304,7 @@ export const useStore = create<StoreState>()(
         // 如果是重复任务，创建下一个周期的新任务
         if (task.repeat !== 'none' && !task.parentId) {
           const nextDue = getNextDueDate(task.dueDate, task.repeat, task.repeatWeekdays);
+          const nextCount = (task.repeatCount || 0) + 1;
           const newTask: Task = {
             ...task,
             id: generateId(),
@@ -310,6 +312,7 @@ export const useStore = create<StoreState>()(
             completedAt: null,
             dueDate: nextDue,
             createdAt: new Date().toISOString(),
+            repeatCount: nextCount,
           };
           updatedTasks = [...updatedTasks, newTask];
         }
@@ -504,6 +507,7 @@ export const useStore = create<StoreState>()(
           completedAt: null,
           order: subtaskOrder + 1,
           repeat: 'none',
+          repeatCount: 0,
           parentId,
         };
         set(state => ({ tasks: [...state.tasks, task] }));
