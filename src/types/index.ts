@@ -21,6 +21,7 @@ export interface Task {
   repeatWeekdays?: number[];    // 自定义周几重复 (0=周日, 1=周一, ..., 6=周六)
   repeatCount: number;          // 重复次数计数，第N次重复
   parentId: string | null;      // 父任务ID（子任务用）
+  archived?: boolean;           // 是否已归档
 }
 
 // ===== 分类 =====

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
-import { IconBack, IconTrash, IconLink, IconVideo, IconExternalLink, IconSparkles } from '../components/common/Icons';
+import { IconBack, IconTrash, IconLink, IconVideo, IconExternalLink, IconSparkles, IconClipboard } from '../components/common/Icons';
 import { generateVideoNote, summarizeKnowledge } from '../utils/aiSummary';
 import './TaskDetailPage.css';
 
@@ -12,6 +12,7 @@ export default function KnowledgeDetailPage() {
   const navigate = useNavigate();
   const { knowledge, categories, addKnowledge, updateKnowledge, deleteKnowledge } = useStore();
   const addToast = useToastStore(s => s.addToast);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
 
   const isNew = id === 'new' || !id;
   const existing = !isNew ? knowledge.find(k => k.id === id) : null;
@@ -29,8 +30,8 @@ export default function KnowledgeDetailPage() {
 
   useEffect(() => {
     if (existing) {
-      setTitle(existing.title);
-      setContent(existing.content);
+      setTitle(existing.title || '');
+      setContent(existing.content || '');
       setCategoryId(existing.categoryId || '');
       setLink(existing.link || '');
       setVideoLink(existing.videoLink || '');
@@ -38,6 +39,111 @@ export default function KnowledgeDetailPage() {
       if (existing.videoLink) setShowVideoSection(true);
     }
   }, [existing]);
+
+  // 智能解析：从粘贴的文本中提取标题、链接和内容
+  const handleSmartPaste = () => {
+    navigator.clipboard?.readText().then(clipText => {
+      if (!clipText || !clipText.trim()) {
+        addToast({ icon: '⚠', title: '剪贴板为空' });
+        return;
+      }
+
+      const text = clipText.trim();
+      let parsedTitle = '';
+      let parsedLink = '';
+      let parsedContent = '';
+
+      // 提取URL
+      const urlRegex = /https?:\/\/[^\s<>"']+/g;
+      const urls = text.match(urlRegex) || [];
+
+      // 提取视频链接
+      const videoUrl = urls.find(u =>
+        u.includes('douyin.com') || u.includes('bilibili.com') ||
+        u.includes('youtube.com') || u.includes('youtu.be') || u.includes('b23.tv')
+      );
+
+      if (videoUrl) {
+        setVideoLink(videoUrl);
+        setShowVideoSection(true);
+      }
+
+      // 第一个非视频URL作为文章链接
+      const articleUrl = urls.find(u => u !== videoUrl);
+      if (articleUrl) {
+        parsedLink = articleUrl;
+      }
+
+      // 去掉URL后的纯文本
+      const textWithoutUrls = text.replace(urlRegex, '').trim();
+
+      // 按行分割
+      const lines = textWithoutUrls.split(/\n/).map(l => l.trim()).filter(l => l);
+
+      if (lines.length > 0) {
+        // 第一行作为标题（如果标题为空）
+        if (!title.trim()) {
+          parsedTitle = lines[0].replace(/^#+\s*/, '').replace(/[*_`]/g, '').substring(0, 100);
+        }
+        // 其余作为内容
+        if (lines.length > 1) {
+          parsedContent = lines.slice(1).join('\n');
+        }
+      } else if (urls.length > 0 && !title.trim()) {
+        // 只有URL没有文字
+        parsedTitle = articleUrl || videoUrl || '链接收藏';
+      }
+
+      // 应用解析结果
+      if (parsedTitle) setTitle(parsedTitle);
+      if (parsedLink) setLink(parsedLink);
+      if (parsedContent) {
+        setContent(prev => prev ? prev + '\n\n' + parsedContent : parsedContent);
+      }
+
+      const parts: string[] = [];
+      if (parsedTitle) parts.push('标题');
+      if (parsedLink) parts.push('文章链接');
+      if (videoUrl) parts.push('视频链接');
+      if (parsedContent) parts.push('内容');
+      addToast({ icon: '✓', title: `已解析${parts.join('、')}` });
+    }).catch(() => {
+      addToast({ icon: '⚠', title: '无法读取剪贴板' });
+    });
+  };
+
+  // 处理内容粘贴时的自动检测
+  const handleContentPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = e.clipboardData.getData('text');
+    const urlRegex = /https?:\/\/[^\s<>"']+/g;
+    const urls = pasted.match(urlRegex) || [];
+
+    if (urls.length > 0 && !link && !videoLink) {
+      const firstUrl = urls[0];
+      if (!firstUrl) return;
+
+      e.preventDefault();
+      const isVideo = firstUrl.includes('douyin.com') || firstUrl.includes('bilibili.com') ||
+        firstUrl.includes('youtube.com') || firstUrl.includes('youtu.be');
+
+      if (isVideo) {
+        setVideoLink(firstUrl);
+        setShowVideoSection(true);
+      } else {
+        setLink(firstUrl);
+      }
+
+      const textWithoutUrls = pasted.replace(urlRegex, '').trim();
+      if (textWithoutUrls) {
+        const target = e.currentTarget as HTMLTextAreaElement;
+        const cursorPos = target.selectionStart || content.length;
+        const before = content.substring(0, cursorPos);
+        const after = content.substring(cursorPos);
+        setContent(before + textWithoutUrls + after);
+      }
+      addToast({ icon: '✓', title: '自动提取链接' });
+    }
+  };
 
   // 生成视频文案
   const handleGenerateVideoNote = () => {
@@ -63,8 +169,12 @@ export default function KnowledgeDetailPage() {
   const summary = (title || content) ? summarizeKnowledge(title, content, videoNote) : null;
 
   const handleSave = () => {
-    if (!title.trim()) return;
-    // 简单验证 URL 格式
+    // 至少需要有标题、内容、链接或视频链接之一
+    if (!title.trim() && !content.trim() && !link.trim() && !videoLink.trim()) {
+      addToast({ icon: '⚠', title: '请至少填写一项内容' });
+      return;
+    }
+
     let cleanLink = link.trim();
     if (cleanLink && !cleanLink.match(/^https?:\/\//)) {
       cleanLink = 'https://' + cleanLink;
@@ -74,9 +184,11 @@ export default function KnowledgeDetailPage() {
       cleanVideoLink = 'https://' + cleanVideoLink;
     }
 
+    const finalTitle = title.trim() || link.trim() || '未命名知识';
+
     if (isNew) {
       addKnowledge({
-        title: title.trim(),
+        title: finalTitle,
         content: content.trim(),
         categoryId: categoryId || null,
         link: cleanLink,
@@ -86,7 +198,7 @@ export default function KnowledgeDetailPage() {
       addToast({ icon: '★', title: '知识已创建', subtitle: '+5 经验值' });
     } else {
       updateKnowledge(id!, {
-        title: title.trim(),
+        title: finalTitle,
         content: content.trim(),
         categoryId: categoryId || null,
         link: cleanLink,
@@ -110,9 +222,7 @@ export default function KnowledgeDetailPage() {
   // 检测视频平台
   const getVideoPlatform = (url: string): { name: string; embedUrl?: string; isDouyin?: boolean } => {
     if (!url) return { name: '' };
-    // 抖音
     if (url.includes('douyin.com') || url.includes('iesdouyin.com')) {
-      // 尝试提取视频ID
       const videoMatch = url.match(/video\/(\d+)/) || url.match(/\/v\/([^/?]+)/);
       if (videoMatch) {
         return { name: '抖音', embedUrl: `https://www.douyin.com/video/${videoMatch[1]}`, isDouyin: true };
@@ -142,6 +252,7 @@ export default function KnowledgeDetailPage() {
   };
 
   const videoPlatform = getVideoPlatform(videoLink);
+  const hasAnyContent = title.trim() || content.trim() || link.trim() || videoLink.trim();
 
   return (
     <div className="page task-detail-page">
@@ -158,11 +269,24 @@ export default function KnowledgeDetailPage() {
       </div>
 
       <div className="task-form">
+        {/* 智能粘贴按钮 */}
+        {isNew && (
+          <button
+            type="button"
+            className="smart-paste-btn"
+            onClick={handleSmartPaste}
+          >
+            <IconClipboard size={18} color="var(--color-primary)" />
+            <span>智能粘贴</span>
+            <span className="smart-paste-hint">自动解析标题、链接和内容</span>
+          </button>
+        )}
+
         <div className="form-group">
-          <label className="form-label">标题 *</label>
+          <label className="form-label">标题</label>
           <input
             className="form-input"
-            placeholder="输入知识标题..."
+            placeholder="输入标题（选填，可自动生成）"
             value={title}
             onChange={e => setTitle(e.target.value)}
             autoFocus
@@ -171,7 +295,7 @@ export default function KnowledgeDetailPage() {
 
         <div className="form-group">
           <div className="content-header">
-            <label className="form-label">内容 *</label>
+            <label className="form-label">内容</label>
             <button
               type="button"
               className="ai-action-btn"
@@ -183,10 +307,12 @@ export default function KnowledgeDetailPage() {
             </button>
           </div>
           <textarea
+            ref={contentRef}
             className="form-textarea knowledge-textarea"
-            placeholder="输入知识内容（支持简单 Markdown）..."
+            placeholder="输入知识内容...或粘贴文字自动提取链接"
             value={content}
             onChange={e => setContent(e.target.value)}
+            onPaste={handleContentPaste}
           />
         </div>
 
@@ -196,10 +322,7 @@ export default function KnowledgeDetailPage() {
             <div className="ai-summary-header">
               <IconSparkles size={16} color="var(--color-primary)" />
               <span>AI 知识总结</span>
-              <button
-                className="ai-summary-close"
-                onClick={() => setShowSummary(false)}
-              >×</button>
+              <button className="ai-summary-close" onClick={() => setShowSummary(false)}>×</button>
             </div>
 
             <div className="ai-summary-section">
@@ -211,9 +334,7 @@ export default function KnowledgeDetailPage() {
               <div className="ai-summary-section">
                 <div className="ai-summary-section-title">🎯 核心要点</div>
                 <ul className="ai-summary-list">
-                  {summary.keyPoints.map((p, i) => (
-                    <li key={i}>{p}</li>
-                  ))}
+                  {summary.keyPoints.map((p, i) => <li key={i}>{p}</li>)}
                 </ul>
               </div>
             )}
@@ -222,9 +343,7 @@ export default function KnowledgeDetailPage() {
               <div className="ai-summary-section">
                 <div className="ai-summary-section-title">✅ 行动清单</div>
                 <ul className="ai-summary-list action">
-                  {summary.actionItems.map((item, i) => (
-                    <li key={i}>☐ {item}</li>
-                  ))}
+                  {summary.actionItems.map((item, i) => <li key={i}>☐ {item}</li>)}
                 </ul>
               </div>
             )}
@@ -244,13 +363,10 @@ export default function KnowledgeDetailPage() {
               <button
                 className="btn btn-sm btn-secondary"
                 onClick={() => {
-                  const text = summary.structure;
-                  navigator.clipboard?.writeText(text);
+                  navigator.clipboard?.writeText(summary.structure);
                   addToast({ icon: '✓', title: '已复制到剪贴板' });
                 }}
-              >
-                复制全文
-              </button>
+              >复制全文</button>
               <button
                 className="btn btn-sm btn-primary"
                 onClick={() => {
@@ -258,9 +374,7 @@ export default function KnowledgeDetailPage() {
                   setShowSummary(false);
                   addToast({ icon: '✓', title: '已插入到内容中' });
                 }}
-              >
-                插入到内容
-              </button>
+              >插入到内容</button>
             </div>
           </div>
         )}
@@ -272,7 +386,7 @@ export default function KnowledgeDetailPage() {
           </label>
           <input
             className="form-input"
-            placeholder="https://example.com/article"
+            placeholder="粘贴链接（选填）"
             value={link}
             onChange={e => setLink(e.target.value)}
             type="url"
@@ -295,58 +409,38 @@ export default function KnowledgeDetailPage() {
             <div className="video-section">
               <input
                 className="form-input"
-                placeholder="粘贴视频链接（支持 Bilibili / YouTube / 抖音）"
+                placeholder="支持 Bilibili / YouTube / 抖音"
                 value={videoLink}
                 onChange={e => setVideoLink(e.target.value)}
                 type="url"
               />
 
-              {/* 视频预览 */}
               {videoLink && videoPlatform.embedUrl && (
                 <div className="video-preview">
-                  <iframe
-                    src={videoPlatform.embedUrl}
-                    title="视频预览"
-                    className="video-iframe"
-                    allowFullScreen
-                    scrolling="no"
-                  />
+                  <iframe src={videoPlatform.embedUrl} title="视频预览" className="video-iframe" allowFullScreen scrolling="no" />
                 </div>
               )}
               {videoLink && !videoPlatform.embedUrl && (
-                <a
-                  href={videoLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="video-link-external"
-                >
+                <a href={videoLink} target="_blank" rel="noopener noreferrer" className="video-link-external">
                   <IconExternalLink size={14} color="var(--color-primary)" />
                   <span>打开视频</span>
                 </a>
               )}
 
-              {/* 视频笔记/文案 */}
               <div className="video-note-header">
                 <label className="form-label video-note-label">视频笔记 / 文案</label>
-                <button
-                  type="button"
-                  className="ai-action-btn"
-                  onClick={handleGenerateVideoNote}
-                  disabled={aiLoading}
-                >
+                <button type="button" className="ai-action-btn" onClick={handleGenerateVideoNote} disabled={aiLoading}>
                   <IconSparkles size={14} color="var(--color-primary)" />
                   <span>{aiLoading ? '生成中...' : '一键整理'}</span>
                 </button>
               </div>
               <textarea
                 className="form-textarea video-note-textarea"
-                placeholder="在这里记录视频中的要点、文案或笔记...&#10;&#10;点击「一键整理」自动生成结构化文案"
+                placeholder="记录视频要点或点击「一键整理」自动生成文案"
                 value={videoNote}
                 onChange={e => setVideoNote(e.target.value)}
               />
-              <p className="video-note-hint">
-                将视频中的关键内容整理为文字笔记，方便日后查阅
-              </p>
+              <p className="video-note-hint">将视频中的关键内容整理为文字笔记</p>
             </div>
           )}
         </div>
@@ -359,18 +453,6 @@ export default function KnowledgeDetailPage() {
           </select>
         </div>
 
-        {existing && existing.link && (
-          <a
-            href={existing.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="knowledge-link-preview"
-          >
-            <IconLink size={16} color="var(--color-primary)" />
-            <span className="knowledge-link-text">{existing.link}</span>
-          </a>
-        )}
-
         {existing && (
           <div className="task-timestamps">
             <span>创建时间：{new Date(existing.createdAt).toLocaleString('zh-CN')}</span>
@@ -382,14 +464,14 @@ export default function KnowledgeDetailPage() {
         <button
           className="floating-save-btn"
           onClick={handleSave}
-          disabled={!title.trim()}
+          disabled={!hasAnyContent}
         >
           {isNew ? '创建' : '保存'}
         </button>
 
         <div className="task-form-actions">
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>取消</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={!title.trim()}>
+          <button className="btn btn-primary" onClick={handleSave} disabled={!hasAnyContent}>
             {isNew ? '创建' : '保存'}
           </button>
         </div>

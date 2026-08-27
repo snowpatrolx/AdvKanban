@@ -98,8 +98,9 @@
   padding: 8px 6px;
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
+  white-space: nowrap;
   background: var(--color-card);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--color-text-secondary);
   transition: all 0.2s;
@@ -601,4 +602,114 @@
   box-shadow: var(--shadow-lg);
   transform: rotate(1deg);
   opacity: 0.95;
+}
+
+/* ===== 归档相关样式 ===== */
+
+/* 归档筛选按钮（状态栏中的"已归档"按钮） */
+.status-filter-btn.archived-filter-btn {
+  flex: 0 0 auto;
+  gap: 3px;
+}
+
+.status-filter-btn.archived-filter-btn.active {
+  background: var(--color-text-light);
+  color: #fff;
+  border-color: var(--color-text-light);
+}
+
+.status-filter-btn.archived-filter-btn.active .status-filter-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 列表卡片中的归档按钮 */
+.task-archive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px 8px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-bg);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-light);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.task-archive-btn:active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+/* 已归档任务区块 */
+.archived-section {
+  margin-top: 4px;
+}
+
+.archived-section .task-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 已归档任务卡片 */
+.archived-task-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-sm);
+  opacity: 0.85;
+  transition: transform 0.15s;
+}
+
+.archived-task-card:active {
+  transform: scale(0.98);
+}
+
+.archived-task-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.archived-task-card-title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.archived-task-card-title.done-text {
+  text-decoration: line-through;
+  color: var(--color-text-light);
+}
+
+/* 已归档任务恢复按钮 */
+.archived-task-restore-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.archived-task-restore-btn:active {
+  background: var(--color-primary);
+  color: #fff;
 }

@@ -262,6 +262,16 @@ export function IconRefresh({ size = 20, color = 'currentColor', className }: Ic
   );
 }
 
+// Clock icon (for pomodoro / timer)
+export function IconClock({ size = 24, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v5l3.5 2" />
+    </svg>
+  );
+}
+
 // Lock icon
 export function IconLock({ size = 24, color = 'currentColor', className }: IconProps) {
   return (
@@ -495,6 +505,16 @@ export function IconExternalLink({ size = 16, color = 'currentColor', className 
     <svg {...defaultProps(size, color)} className={className}>
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <path d="M15 3h6v6M10 14L21 3" />
+    </svg>
+  );
+}
+
+// Clipboard icon
+export function IconClipboard({ size = 20, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <rect x="8" y="2" width="8" height="4" rx="1" />
     </svg>
   );
 }

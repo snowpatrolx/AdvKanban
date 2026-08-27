@@ -30,6 +30,9 @@ interface StoreState {
   toggleTaskComplete: (id: string) => { pointsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
   reorderTasks: (sourceId: string, targetId: string) => void;
   setTaskStatus: (id: string, status: TaskStatus) => void;
+  archiveTask: (id: string) => void;
+  unarchiveTask: (id: string) => void;
+  archiveCompletedTasks: () => number;
 
   // 子任务操作
   addSubtask: (parentId: string, title: string) => string;
@@ -57,7 +60,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.07';
+export const APP_VERSION = '1.08';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -487,6 +490,29 @@ export const useStore = create<StoreState>()(
             tasks: s.tasks.map(t => t.id === id ? { ...t, status } : t),
           }));
         }
+      },
+
+      // ===== 归档操作 =====
+      archiveTask: (id) => set(state => ({
+        tasks: state.tasks.map(t => t.id === id ? { ...t, archived: true } : t),
+      })),
+
+      unarchiveTask: (id) => set(state => ({
+        tasks: state.tasks.map(t => t.id === id ? { ...t, archived: false } : t),
+      })),
+
+      archiveCompletedTasks: () => {
+        const state = get();
+        const toArchive = state.tasks.filter(t =>
+          !t.parentId && t.status === 'done' && !t.archived
+        );
+        const archivedIds = new Set(toArchive.map(t => t.id));
+        set({
+          tasks: state.tasks.map(t =>
+            archivedIds.has(t.id) ? { ...t, archived: true } : t
+          ),
+        });
+        return toArchive.length;
       },
 
       // ===== 子任务操作 =====

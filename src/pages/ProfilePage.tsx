@@ -1,18 +1,33 @@
 import { useNavigate } from 'react-router-dom';
 import { useStore, APP_VERSION } from '../store/useStore';
+import { useToastStore } from '../components/common/Toast';
 import { getLevelProgress, LEVELS } from '../utils/gamification';
 import { BADGES } from '../data/badges';
 import { CHAPTERS } from '../data/chapters';
 import {
   IconFlame, IconTag, IconDatabase, IconArrowRight, IconTrophy, IconCheck,
-  IconSeedling, IconStarBadge, IconGem, IconEdit, IconBooks, IconDragon,
+  IconSeedling, IconStarBadge, IconGem, IconEdit, IconBooks, IconDragon, IconAI,
+  IconFolder,
 } from '../components/common/Icons';
 import './ProfilePage.css';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { userProfile, userBadges, knowledge, tasks, storyProgress } = useStore();
+  const { userProfile, userBadges, knowledge, tasks, storyProgress, archiveCompletedTasks } = useStore();
+  const addToast = useToastStore(s => s.addToast);
   const levelInfo = getLevelProgress(userProfile.totalPoints);
+
+  // 可批量归档的已完成任务数量
+  const archiveableCount = tasks.filter(t => !t.parentId && t.status === 'done' && !t.archived).length;
+
+  const handleBatchArchive = () => {
+    if (archiveableCount === 0) {
+      addToast({ icon: '!', title: '没有可归档的已完成任务' });
+      return;
+    }
+    const count = archiveCompletedTasks();
+    addToast({ icon: '▼', title: `已归档 ${count} 个已完成任务` });
+  };
 
   return (
     <div className="page profile-page">
@@ -99,6 +114,18 @@ export default function ProfilePage() {
 
       {/* 菜单 */}
       <div className="profile-menu">
+        <div className="profile-menu-item" onClick={handleBatchArchive}>
+          <span className="profile-menu-label">
+            <IconFolder size={20} color="var(--color-primary)" /> 批量归档已完成任务
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--color-text-light)' }}>{archiveableCount} 个</span>
+        </div>
+        <div className="profile-menu-item" onClick={() => navigate('/ai')}>
+          <span className="profile-menu-label">
+            <IconAI size={20} color="var(--color-primary)" /> AI 分析
+          </span>
+          <IconArrowRight size={18} color="var(--color-text-light)" />
+        </div>
         <div className="profile-menu-item" onClick={() => navigate('/categories')}>
           <span className="profile-menu-label">
             <IconTag size={20} color="var(--color-primary)" /> 分类管理

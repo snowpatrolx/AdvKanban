@@ -1,0 +1,313 @@
+.pomodoro-page {
+  padding-top: 12px;
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px);
+}
+
+/* ===== 页面标题 ===== */
+.pomodoro-page-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.pomodoro-page-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pomodoro-page-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* ===== 圆形倒计时卡片 ===== */
+.pomodoro-timer-card {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 24px 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pomodoro-timer-ring {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pomodoro-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* 从顶部开始计时 */
+}
+
+.pomodoro-ring-track {
+  stroke: var(--color-border);
+}
+
+.pomodoro-ring-progress {
+  transition: stroke-dashoffset 0.5s linear, stroke 0.3s ease;
+}
+
+/* 专注模式 - 主色调 */
+.pomodoro-mode-focus .pomodoro-ring-progress {
+  stroke: var(--color-primary);
+}
+
+/* 休息模式 - 成功色调 */
+.pomodoro-mode-break .pomodoro-ring-progress {
+  stroke: var(--color-success);
+}
+
+/* 中心时间与状态文字 */
+.pomodoro-timer-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pomodoro-time-text {
+  font-size: 52px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.pomodoro-status-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.pomodoro-mode-break .pomodoro-status-text {
+  color: var(--color-success);
+}
+
+/* 模式标签 */
+.pomodoro-mode-tags {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.pomodoro-mode-tag {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-light);
+  background: var(--color-bg);
+  transition: all 0.2s;
+}
+
+.pomodoro-mode-tag.active {
+  color: #fff;
+  background: var(--color-primary);
+}
+
+.pomodoro-mode-break .pomodoro-mode-tag.active {
+  background: var(--color-success);
+}
+
+/* ===== 控制按钮 ===== */
+.pomodoro-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.pomodoro-btn-toggle {
+  flex: 1;
+  max-width: 180px;
+  padding: 14px 0;
+  border-radius: var(--radius-md);
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  transition: all 0.2s;
+  box-shadow: var(--shadow-md);
+}
+
+.pomodoro-btn-toggle.start {
+  background: var(--color-primary);
+}
+
+.pomodoro-btn-toggle.start:active {
+  background: var(--color-primary-dark);
+}
+
+.pomodoro-btn-toggle.pause {
+  background: var(--color-warning);
+}
+
+.pomodoro-btn-toggle.pause:active {
+  opacity: 0.85;
+}
+
+.pomodoro-btn-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pomodoro-btn-placeholder {
+  width: 76px; /* 占位，与重置按钮宽度平衡，使开始按钮居中 */
+}
+
+/* ===== 关联任务卡片 ===== */
+.pomodoro-task-card {
+  padding: 14px 16px;
+}
+
+.pomodoro-task-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pomodoro-task-select {
+  margin-top: 4px;
+}
+
+.pomodoro-task-empty {
+  font-size: 12px;
+  color: var(--color-text-light);
+  margin-top: 6px;
+}
+
+/* ===== 今日统计卡片 ===== */
+.pomodoro-stats-card {
+  padding: 16px;
+}
+
+.pomodoro-stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.pomodoro-stats-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.pomodoro-stats-date {
+  font-size: 12px;
+  color: var(--color-text-light);
+  font-variant-numeric: tabular-nums;
+}
+
+.pomodoro-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.pomodoro-stat-item {
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  padding: 14px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pomodoro-stat-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.pomodoro-stat-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* ===== 最近会话记录 ===== */
+.pomodoro-sessions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.pomodoro-sessions-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 10px;
+}
+
+.pomodoro-session-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  font-size: 13px;
+}
+
+.pomodoro-session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.pomodoro-session-task {
+  flex: 1;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pomodoro-session-time {
+  color: var(--color-text-light);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 360px) {
+  .pomodoro-timer-ring {
+    width: 260px;
+    height: 260px;
+  }
+
+  .pomodoro-time-text {
+    font-size: 44px;
+  }
+
+  .pomodoro-btn-toggle {
+    font-size: 16px;
+  }
+}

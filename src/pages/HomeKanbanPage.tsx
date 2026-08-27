@@ -12,6 +12,7 @@ import { BADGES } from '../data/badges';
 import {
   IconPlus, IconSearch, IconCalendar, IconCheckCircle, IconList, IconColumns,
   IconFlame, IconRepeat, IconChevronDown, IconChevronRight, IconSubtask, IconDrag,
+  IconFolder, IconRefresh,
 } from '../components/common/Icons';
 import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor } from '../utils/taskHelpers';
 import type { Task, TaskStatus, Category, TaskPriority } from '../types';
@@ -24,7 +25,7 @@ const COLUMNS: { id: TaskStatus; title: string; color: string }[] = [
 ];
 
 type ViewMode = 'list' | 'kanban';
-type StatusFilter = 'all' | TaskStatus;
+type StatusFilter = 'all' | TaskStatus | 'archived';
 
 // 优先级排序权重
 function priorityWeight(p: TaskPriority): number {
@@ -38,7 +39,7 @@ function priorityWeight(p: TaskPriority): number {
 
 export default function HomeKanbanPage() {
   const navigate = useNavigate();
-  const { tasks, categories, userProfile, addTask, toggleTaskComplete, setTaskStatus, toggleSubtask, reorderTasks } = useStore();
+  const { tasks, categories, userProfile, addTask, toggleTaskComplete, setTaskStatus, toggleSubtask, reorderTasks, archiveTask, unarchiveTask } = useStore();
   const addToast = useToastStore(s => s.addToast);
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -62,6 +63,11 @@ export default function HomeKanbanPage() {
   const filteredTasks = useMemo(() => {
     return tasks
       .filter(t => !t.parentId) // 只显示主任务
+      .filter(t => {
+        // 已归档视图只显示归档任务；其他视图排除归档任务
+        if (statusFilter === 'archived') return t.archived === true;
+        return !t.archived;
+      })
       .filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase()))
       .filter(t => {
         if (!filterCategory) return true;
@@ -70,10 +76,20 @@ export default function HomeKanbanPage() {
         return t.categoryId === filterCategory;
       })
       .filter(t => {
-        if (statusFilter === 'all') return true;
+        if (statusFilter === 'all' || statusFilter === 'archived') return true;
         return t.status === statusFilter;
       });
   }, [tasks, search, filterCategory, statusFilter]);
+
+  // 已归档任务总数（不受搜索/分类筛选影响，用于按钮计数）
+  const archivedCount = useMemo(() => tasks.filter(t => !t.parentId && t.archived).length, [tasks]);
+
+  // 已归档任务列表（用于归档视图，按完成时间倒序）
+  const archivedTasks = useMemo(() => {
+    return [...filteredTasks].sort((a, b) =>
+      (b.completedAt || b.createdAt).localeCompare(a.completedAt || a.createdAt)
+    );
+  }, [filteredTasks]);
 
   const sortedListTasks = useMemo(() => {
     return [...filteredTasks]
@@ -105,6 +121,7 @@ export default function HomeKanbanPage() {
     // 看板视图不受状态筛选影响（看板本身就是按状态分列）
     const allFiltered = tasks
       .filter(t => !t.parentId)
+      .filter(t => !t.archived) // 看板视图排除已归档任务
       .filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase()))
       .filter(t => {
         if (!filterCategory) return true;
@@ -163,6 +180,16 @@ export default function HomeKanbanPage() {
     if (result.storyUnlocked && result.storyUnlocked > 0) {
       addToast({ icon: '◆', title: '新章节已解锁！' });
     }
+  };
+
+  const handleArchive = (id: string) => {
+    archiveTask(id);
+    addToast({ icon: '▼', title: '任务已归档' });
+  };
+
+  const handleRestore = (id: string) => {
+    unarchiveTask(id);
+    addToast({ icon: '↺', title: '任务已恢复' });
   };
 
   // Kanban drag handlers
@@ -233,20 +260,22 @@ export default function HomeKanbanPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="hk-view-toggle">
-          <button
-            className={`hk-view-btn ${viewMode === 'list' ? 'active' : ''}`}
-            onClick={() => setViewMode('list')}
-          >
-            <IconList size={18} color={viewMode === 'list' ? '#fff' : 'var(--color-text-light)'} />
-          </button>
-          <button
-            className={`hk-view-btn ${viewMode === 'kanban' ? 'active' : ''}`}
-            onClick={() => setViewMode('kanban')}
-          >
-            <IconColumns size={18} color={viewMode === 'kanban' ? '#fff' : 'var(--color-text-light)'} />
-          </button>
-        </div>
+        {statusFilter !== 'archived' && (
+          <div className="hk-view-toggle">
+            <button
+              className={`hk-view-btn ${viewMode === 'list' ? 'active' : ''}`}
+              onClick={() => setViewMode('list')}
+            >
+              <IconList size={18} color={viewMode === 'list' ? '#fff' : 'var(--color-text-light)'} />
+            </button>
+            <button
+              className={`hk-view-btn ${viewMode === 'kanban' ? 'active' : ''}`}
+              onClick={() => setViewMode('kanban')}
+            >
+              <IconColumns size={18} color={viewMode === 'kanban' ? '#fff' : 'var(--color-text-light)'} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 状态筛选按钮 */}
@@ -269,6 +298,14 @@ export default function HomeKanbanPage() {
             <span className="status-filter-count">{tasksByStatus[col.id].length}</span>
           </button>
         ))}
+        <button
+          className={`status-filter-btn archived-filter-btn ${statusFilter === 'archived' ? 'active' : ''}`}
+          onClick={() => setStatusFilter('archived')}
+        >
+          <IconFolder size={13} color={statusFilter === 'archived' ? '#fff' : 'var(--color-text-light)'} />
+          已归档
+          <span className="status-filter-count">{archivedCount}</span>
+        </button>
       </div>
 
       {/* 简洁统计条 */}
@@ -297,8 +334,35 @@ export default function HomeKanbanPage() {
         ))}
       </div>
 
+      {/* 已归档任务视图 */}
+      {statusFilter === 'archived' && (
+        <div className="task-section archived-section">
+          <h3 className="task-section-title">
+            <IconFolder size={16} color="var(--color-text-light)" /> 已归档任务
+          </h3>
+          {archivedTasks.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon-flat">
+                <IconCheckCircle size={48} color="var(--color-text-light)" />
+              </div>
+              <p>暂无已归档任务</p>
+            </div>
+          ) : (
+            archivedTasks.map(t => (
+              <ArchivedTaskCard
+                key={t.id}
+                task={t}
+                categories={categories}
+                onRestore={handleRestore}
+                onClick={() => navigate(`/task/${t.id}`)}
+              />
+            ))
+          )}
+        </div>
+      )}
+
       {/* 列表视图 */}
-      {viewMode === 'list' && (
+      {viewMode === 'list' && statusFilter !== 'archived' && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -317,6 +381,7 @@ export default function HomeKanbanPage() {
                   categories={categories}
                   allTasks={tasks}
                   onToggleSubtask={handleToggleSubtask}
+                  onArchive={handleArchive}
                 />
               ))}
             </div>
@@ -335,14 +400,15 @@ export default function HomeKanbanPage() {
             )}
             {otherTasks.map(t => (
               <DraggableListTaskCard
-                key={t.id}
-                task={t}
-                onToggle={handleToggle}
-                onClick={() => navigate(`/task/${t.id}`)}
-                categories={categories}
-                allTasks={tasks}
-                onToggleSubtask={handleToggleSubtask}
-              />
+                  key={t.id}
+                  task={t}
+                  onToggle={handleToggle}
+                  onClick={() => navigate(`/task/${t.id}`)}
+                  categories={categories}
+                  allTasks={tasks}
+                  onToggleSubtask={handleToggleSubtask}
+                  onArchive={handleArchive}
+                />
             ))}
           </div>
           <DragOverlay>
@@ -362,7 +428,7 @@ export default function HomeKanbanPage() {
       )}
 
       {/* 看板视图 */}
-      {viewMode === 'kanban' && (
+      {viewMode === 'kanban' && statusFilter !== 'archived' && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -437,6 +503,7 @@ function DraggableListTaskCard(props: {
   categories: Category[];
   allTasks: Task[];
   onToggleSubtask: (id: string) => void;
+  onArchive?: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.task.id });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
@@ -452,13 +519,14 @@ function DraggableListTaskCard(props: {
 }
 
 // ===== List Task Card (with subtask display) =====
-function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleSubtask, dragging }: {
+function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleSubtask, onArchive, dragging }: {
   task: Task;
   onToggle: (id: string) => void;
   onClick: () => void;
   categories: Category[];
   allTasks: Task[];
   onToggleSubtask: (id: string) => void;
+  onArchive?: (id: string) => void;
   dragging?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -643,6 +711,52 @@ function KanbanCard({
       {...attributes}
     >
       {cardContent}
+    </div>
+  );
+}
+
+// ===== Archived Task Card =====
+function ArchivedTaskCard({ task, categories, onRestore, onClick }: {
+  task: Task;
+  categories: Category[];
+  onRestore: (id: string) => void;
+  onClick: () => void;
+}) {
+  const catName = getCategoryName(categories, task.categoryId);
+  const catColor = getCategoryColor(categories, task.categoryId);
+
+  return (
+    <div className="archived-task-card">
+      <div className="archived-task-card-body" onClick={onClick}>
+        <div className="archived-task-card-title done-text">
+          {task.title}
+        </div>
+        <div className="task-card-meta">
+          {task.priority && (
+            <span className="tag" style={{ background: priorityColor(task.priority) + '22', color: priorityColor(task.priority) }}>
+              {priorityLabel(task.priority)}
+            </span>
+          )}
+          {catName && (
+            <span className="tag" style={{ background: catColor + '22', color: catColor }}>
+              {catName}
+            </span>
+          )}
+          {task.completedAt && (
+            <span className="task-due">
+              <IconCheckCircle size={13} color="var(--color-text-secondary)" />
+              <span style={{ marginLeft: 3 }}>{formatDate(task.completedAt)}</span>
+            </span>
+          )}
+        </div>
+      </div>
+      <button
+        className="archived-task-restore-btn"
+        onClick={(e) => { e.stopPropagation(); onRestore(task.id); }}
+      >
+        <IconRefresh size={15} color="var(--color-primary)" />
+        恢复
+      </button>
     </div>
   );
 }
