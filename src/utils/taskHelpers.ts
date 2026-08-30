@@ -67,3 +67,24 @@ export function formatDate(dateStr: string | null): string {
   if (diff <= 7) return `${diff}天后`;
   return `${d.getMonth() + 1}月${d.getDate()}日`;
 }
+
+/**
+ * 判断任务是否应该显示为今日任务
+ * 包括：截止日期为今天，或自定义周几重复且今天在重复日中
+ */
+export function isTaskToday(task: Task): boolean {
+  if (task.status === 'done') return false;
+  if (task.archived) return false;
+  if (task.parentId) return false;
+
+  // 截止日期是今天
+  if (isToday(task.dueDate)) return true;
+
+  // 自定义周几重复，且今天是重复日
+  if (task.repeat === 'weekdays' && task.repeatWeekdays && task.repeatWeekdays.length > 0) {
+    const todayDay = new Date().getDay();
+    return task.repeatWeekdays.includes(todayDay);
+  }
+
+  return false;
+}

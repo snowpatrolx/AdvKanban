@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore, ANY_CATEGORY_ID } from '../store/useStore';
 import { getCategoryName, getCategoryColor } from '../utils/taskHelpers';
-import { IconBook, IconPlus, IconSearch, IconLink, IconVideo, IconSparkles } from '../components/common/Icons';
+import { IconBook, IconPlus, IconSearch, IconLink, IconVideo, IconSparkles, IconNetwork } from '../components/common/Icons';
 import './KnowledgePage.css';
 
 export default function KnowledgePage() {
@@ -86,6 +86,13 @@ export default function KnowledgePage() {
       <div className="page-header">
         <h1 className="page-title">知识库</h1>
         <div className="knowledge-header-actions">
+          <button
+            className="btn btn-secondary btn-sm knowledge-analysis-btn"
+            onClick={() => navigate('/knowledge/graph')}
+            title="知识图谱"
+          >
+            <IconNetwork size={16} color="var(--color-primary)" />
+          </button>
           <button
             className="btn btn-secondary btn-sm knowledge-analysis-btn"
             onClick={() => setShowAnalysis(!showAnalysis)}

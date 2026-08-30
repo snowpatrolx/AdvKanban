@@ -518,3 +518,47 @@ export function IconClipboard({ size = 20, color = 'currentColor', className }: 
     </svg>
   );
 }
+
+// Zoom in icon
+export function IconZoomIn({ size = 20, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+      <path d="M11 8v6M8 11h6" />
+    </svg>
+  );
+}
+
+// Zoom out icon
+export function IconZoomOut({ size = 20, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+      <path d="M8 11h6" />
+    </svg>
+  );
+}
+
+// Info icon
+export function IconInfo({ size = 20, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 16v-4M12 8h.01" />
+    </svg>
+  );
+}
+
+// Network / Graph icon
+export function IconNetwork({ size = 20, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <circle cx="12" cy="5" r="2" />
+      <circle cx="5" cy="19" r="2" />
+      <circle cx="19" cy="19" r="2" />
+      <path d="M12 7v6M12 13l-6 4M12 13l6 4" />
+    </svg>
+  );
+}

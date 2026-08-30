@@ -14,7 +14,7 @@ import {
   IconFlame, IconRepeat, IconChevronDown, IconChevronRight, IconSubtask, IconDrag,
   IconFolder, IconRefresh,
 } from '../components/common/Icons';
-import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor } from '../utils/taskHelpers';
+import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor, isTaskToday } from '../utils/taskHelpers';
 import type { Task, TaskStatus, Category, TaskPriority } from '../types';
 import './HomeKanbanPage.css';
 
@@ -50,6 +50,7 @@ export default function HomeKanbanPage() {
   const [quickTitle, setQuickTitle] = useState('');
   const [quickCategory, setQuickCategory] = useState('');
   const [quickDate, setQuickDate] = useState('');
+  const [quickStatus, setQuickStatus] = useState<TaskStatus>('todo');
 
   // Kanban drag state
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -112,9 +113,9 @@ export default function HomeKanbanPage() {
   }, [filteredTasks]);
 
   // 在状态筛选为 all 时分今日/其他，否则显示全部筛选结果
-  const todayTasks = statusFilter === 'all' ? sortedListTasks.filter(t => isToday(t.dueDate)) : [];
+  const todayTasks = statusFilter === 'all' ? sortedListTasks.filter(t => isTaskToday(t)) : [];
   const otherTasks = statusFilter === 'all'
-    ? sortedListTasks.filter(t => !isToday(t.dueDate))
+    ? sortedListTasks.filter(t => !isTaskToday(t))
     : sortedListTasks;
 
   const tasksByStatus = useMemo(() => {
@@ -147,11 +148,12 @@ export default function HomeKanbanPage() {
       title: quickTitle.trim(),
       categoryId: quickCategory || null,
       dueDate: quickDate || null,
-      status: 'todo',
+      status: quickStatus,
     });
     setQuickTitle('');
     setQuickCategory('');
     setQuickDate('');
+    setQuickStatus('todo');
     setShowQuickAdd(false);
     addToast({ icon: '✓', title: '任务已添加', subtitle: quickTitle.trim() });
   };
@@ -484,6 +486,21 @@ export default function HomeKanbanPage() {
           <div className="form-group">
             <label className="form-label">截止日期</label>
             <input type="date" className="form-input" value={quickDate} onChange={e => setQuickDate(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">状态</label>
+            <div className="quick-status-selector">
+              {(['todo', 'doing', 'done'] as TaskStatus[]).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`quick-status-btn ${quickStatus === s ? 'active' : ''}`}
+                  onClick={() => setQuickStatus(s)}
+                >
+                  {s === 'todo' ? '待办' : s === 'doing' ? '进行中' : '已完成'}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="quick-add-actions">
             <button className="btn btn-secondary" onClick={() => setShowQuickAdd(false)}>取消</button>

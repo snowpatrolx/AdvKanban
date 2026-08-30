@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
 import { IconBack, IconTrash, IconLink, IconVideo, IconExternalLink, IconSparkles, IconClipboard } from '../components/common/Icons';
-import { generateVideoNote, summarizeKnowledge } from '../utils/aiSummary';
+import { generateVideoNote, summarizeKnowledge, generateVideoScript, getVideoStyleName, type VideoStyle } from '../utils/aiSummary';
 import './TaskDetailPage.css';
 
 export default function KnowledgeDetailPage() {
@@ -26,6 +26,8 @@ export default function KnowledgeDetailPage() {
   const [showVideoSection, setShowVideoSection] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showVideoScript, setShowVideoScript] = useState(false);
+  const [videoStyle, setVideoStyle] = useState<VideoStyle>('knowledge');
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
@@ -166,6 +168,19 @@ export default function KnowledgeDetailPage() {
     }, 500);
   };
 
+  // 生成视频脚本
+  const handleGenerateVideoScript = () => {
+    setAiLoading(true);
+    setShowVideoScript(true);
+    setTimeout(() => {
+      setAiLoading(false);
+    }, 600);
+  };
+
+  const videoScript = (title || content)
+    ? generateVideoScript(title, content, videoStyle)
+    : null;
+
   const summary = (title || content) ? summarizeKnowledge(title, content, videoNote) : null;
 
   const handleSave = () => {
@@ -296,15 +311,26 @@ export default function KnowledgeDetailPage() {
         <div className="form-group">
           <div className="content-header">
             <label className="form-label">内容</label>
-            <button
-              type="button"
-              className="ai-action-btn"
-              onClick={handleSummarize}
-              disabled={aiLoading || !content.trim()}
-            >
-              <IconSparkles size={14} color="var(--color-primary)" />
-              <span>AI 总结</span>
-            </button>
+            <div className="ai-actions-group">
+              <button
+                type="button"
+                className="ai-action-btn"
+                onClick={handleSummarize}
+                disabled={aiLoading || !content.trim()}
+              >
+                <IconSparkles size={14} color="var(--color-primary)" />
+                <span>AI 总结</span>
+              </button>
+              <button
+                type="button"
+                className="ai-action-btn"
+                onClick={handleGenerateVideoScript}
+                disabled={aiLoading || !content.trim()}
+              >
+                <IconVideo size={14} color="var(--color-primary)" />
+                <span>视频脚本</span>
+              </button>
+            </div>
           </div>
           <textarea
             ref={contentRef}
@@ -375,6 +401,92 @@ export default function KnowledgeDetailPage() {
                   addToast({ icon: '✓', title: '已插入到内容中' });
                 }}
               >插入到内容</button>
+            </div>
+          </div>
+        )}
+
+        {/* 视频脚本生成面板 */}
+        {showVideoScript && videoScript && (
+          <div className="ai-summary-panel video-script-panel">
+            <div className="ai-summary-header">
+              <IconVideo size={16} color="var(--color-primary)" />
+              <span>AI 视频脚本生成</span>
+              <button className="ai-summary-close" onClick={() => setShowVideoScript(false)}>×</button>
+            </div>
+
+            {/* 风格选择 */}
+            <div className="video-style-selector">
+              <span className="video-style-label">选择风格：</span>
+              <div className="video-style-options">
+                {(['knowledge', 'tutorial', 'story', 'vlog', 'emotion'] as VideoStyle[]).map(style => (
+                  <button
+                    key={style}
+                    className={`video-style-btn ${videoStyle === style ? 'active' : ''}`}
+                    onClick={() => setVideoStyle(style)}
+                  >
+                    {getVideoStyleName(style)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 标题建议 */}
+            <div className="ai-summary-section">
+              <div className="ai-summary-section-title">🎬 标题建议</div>
+              <ul className="ai-summary-list">
+                {videoScript.titles.map((t, i) => (
+                  <li key={i} className="video-title-suggestion" onClick={() => {
+                    setTitle(t);
+                    addToast({ icon: '✓', title: '已应用标题' });
+                  }}>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 脚本内容 */}
+            <div className="ai-summary-section">
+              <div className="ai-summary-section-title">
+                📝 完整脚本
+                <span className="video-duration-badge">
+                  约 {videoScript.durationFormatted}
+                </span>
+              </div>
+              <div className="video-script-content">
+                <pre>{videoScript.script}</pre>
+              </div>
+            </div>
+
+            {/* 标签 */}
+            {videoScript.hashtags.length > 0 && (
+              <div className="ai-summary-section">
+                <div className="ai-summary-section-title">🏷️ 推荐标签</div>
+                <div className="ai-summary-keywords">
+                  {videoScript.hashtags.map((tag, i) => (
+                    <span key={i} className="ai-keyword-tag">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="ai-summary-actions">
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => {
+                  navigator.clipboard?.writeText(videoScript.script);
+                  addToast({ icon: '✓', title: '脚本已复制' });
+                }}
+              >复制脚本</button>
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() => {
+                  setVideoNote(prev => prev ? prev + '\n\n' + videoScript.script : videoScript.script);
+                  setShowVideoSection(true);
+                  setShowVideoScript(false);
+                  addToast({ icon: '✓', title: '已保存到视频笔记' });
+                }}
+              >保存到视频笔记</button>
             </div>
           </div>
         )}

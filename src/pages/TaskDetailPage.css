@@ -540,3 +540,101 @@
   padding-top: 10px;
   border-top: 1px solid rgba(108, 92, 231, 0.1);
 }
+
+/* AI 操作按钮组 */
+.ai-actions-group {
+  display: flex;
+  gap: 6px;
+}
+
+/* 视频脚本面板 */
+.video-script-panel {
+  background: linear-gradient(135deg, rgba(0, 184, 148, 0.06), rgba(108, 92, 231, 0.04));
+  border-color: rgba(0, 184, 148, 0.2);
+}
+
+.video-script-panel .ai-summary-header {
+  color: var(--color-primary);
+  border-bottom-color: rgba(0, 184, 148, 0.1);
+}
+
+/* 视频风格选择器 */
+.video-style-selector {
+  margin-bottom: 14px;
+}
+
+.video-style-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.video-style-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.video-style-btn {
+  padding: 5px 12px;
+  background: var(--color-bg);
+  border: 1.5px solid var(--color-border);
+  border-radius: 16px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.video-style-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.video-style-btn:active {
+  transform: scale(0.96);
+}
+
+/* 视频标题建议 */
+.video-title-suggestion {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.video-title-suggestion:hover {
+  color: var(--color-primary);
+}
+
+/* 视频时长徽章 */
+.video-duration-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: rgba(108, 92, 231, 0.1);
+  color: var(--color-primary);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* 视频脚本内容 */
+.video-script-content {
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.video-script-content pre {
+  margin: 0;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}

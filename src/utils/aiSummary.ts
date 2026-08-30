@@ -42,7 +42,7 @@ const ACTION_KEYWORDS = [
 /**
  * 提取关键词
  */
-function extractKeywords(text: string, topN = 10): { word: string; count: number }[] {
+export function extractKeywords(text: string, topN = 10): { word: string; count: number }[] {
   const cleaned = text.replace(/[^\u4e00-\u9fa5a-zA-Z0-9\s]/g, ' ');
 
   // 提取中文词汇（2-4字组合）和英文单词
@@ -209,8 +209,137 @@ function generateStructure(text: string, keyPoints: string[]): string {
   return structure;
 }
 
+// 视频风格类型
+export type VideoStyle = 'knowledge' | 'tutorial' | 'story' | 'vlog' | 'emotion';
+
+// 视频时长估算（字数）
+const WORDS_PER_MINUTE = 200; // 正常语速每分钟约200字
+
 /**
- * 视频文案生成
+ * 估算视频时长（秒）
+ */
+export function estimateVideoDuration(text: string): number {
+  const wordCount = text.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g, '').length;
+  return Math.round((wordCount / WORDS_PER_MINUTE) * 60);
+}
+
+/**
+ * 格式化时长
+ */
+export function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+/**
+ * 生成吸引人的标题
+ */
+function generateCatchyTitles(title: string, keywords: { word: string; count: number }[]): string[] {
+  const topKeyword = keywords[0]?.word || title;
+  const secondKeyword = keywords[1]?.word || '';
+
+  const templates = [
+    `${topKeyword}的终极指南，看完这篇就够了！`,
+    `为什么${topKeyword}这么重要？90%的人都不知道`,
+    `深度解析${topKeyword}，从入门到精通`,
+    `${topKeyword}的5个核心要点，第3个最关键`,
+    `关于${topKeyword}，你需要知道的一切`,
+    `${topKeyword} vs ${secondKeyword || '传统方法'}，哪个更好？`,
+    `学会${topKeyword}，效率提升10倍`,
+    `${topKeyword}的真相，终于有人说清楚了`,
+  ];
+
+  // 打乱顺序返回前3个
+  return [...templates].sort(() => Math.random() - 0.5).slice(0, 3);
+}
+
+/**
+ * 生成视频开头钩子
+ */
+function generateHook(style: VideoStyle, keywords: { word: string; count: number }[]): string {
+  const topKeyword = keywords[0]?.word || '这个话题';
+
+  const hooks: Record<VideoStyle, string[]> = {
+    knowledge: [
+      `你知道${topKeyword}背后的真相吗？今天一次性给你讲清楚。`,
+      `关于${topKeyword}，90%的人都理解错了。`,
+      `如果早知道${topKeyword}的这些原理，我能少走很多弯路。`,
+      `${topKeyword}到底是什么？为什么它这么重要？`,
+    ],
+    tutorial: [
+      `今天教你${topKeyword}的正确方法，学会就能用。`,
+      `${topKeyword}怎么做？手把手教你，看完就会。`,
+      `别再乱学${topKeyword}了，正确的方法是这样的。`,
+      `三步学会${topKeyword}，新手也能轻松上手。`,
+    ],
+    story: [
+      `这是一个关于${topKeyword}的故事，看完你会有收获。`,
+      `曾经我也不懂${topKeyword}，直到发生了这件事...`,
+      `${topKeyword}改变了我的生活，今天分享给你。`,
+      `一个关于${topKeyword}的真实经历，值得你看完。`,
+    ],
+    vlog: [
+      `今天来聊聊${topKeyword}，这是我的真实感受。`,
+      `关于${topKeyword}，我想说几句心里话。`,
+      `${topKeyword}到底怎么样？今天来聊聊我的体验。`,
+      `记录一下我学习${topKeyword}的过程和心得。`,
+    ],
+    emotion: [
+      `${topKeyword}，可能是你最需要的东西。`,
+      `如果你也在纠结${topKeyword}，希望这个视频能帮到你。`,
+      `${topKeyword}的本质，其实很多人都没看透。`,
+      `愿每个关注${topKeyword}的人，都能找到答案。`,
+    ],
+  };
+
+  const styleHooks = hooks[style] || hooks.knowledge;
+  return styleHooks[Math.floor(Math.random() * styleHooks.length)];
+}
+
+/**
+ * 生成视频结尾
+ */
+function generateEnding(style: VideoStyle): string {
+  const endings: Record<VideoStyle, string[]> = {
+    knowledge: [
+      '以上就是今天的全部内容，如果觉得有帮助，记得点赞收藏。',
+      '关于这个话题，你还有什么疑问？评论区告诉我。',
+      '觉得有用的话，分享给身边需要的朋友吧。',
+      '关注我，持续分享更多干货知识。',
+    ],
+    tutorial: [
+      '学会了吗？赶紧动手试试吧！',
+      '有问题评论区留言，我会一一解答。',
+      '觉得教程有用的话，点个赞支持一下。',
+      '关注我，下期教你更多实用技巧。',
+    ],
+    story: [
+      '故事讲完了，你有什么感想？评论区聊聊。',
+      '如果这个故事触动了你，点个赞让我知道。',
+      '每个故事都有它的意义，希望你能有所收获。',
+      '关注我，听更多有温度的故事。',
+    ],
+    vlog: [
+      '今天的分享就到这里，我们下期见。',
+      '你们觉得怎么样？评论区告诉我你的想法。',
+      '喜欢这种风格的话，点个赞让我知道。',
+      '感谢观看，记得关注我哦。',
+    ],
+    emotion: [
+      '愿你被这个世界温柔以待，我们下期再见。',
+      '如果有共鸣，点个赞让我知道你在。',
+      '照顾好自己，我们都会越来越好的。',
+      '感谢你的陪伴，晚安。',
+    ],
+  };
+
+  const styleEndings = endings[style] || endings.knowledge;
+  return styleEndings[Math.floor(Math.random() * styleEndings.length)];
+}
+
+/**
+ * 视频文案生成（增强版）
  * 基于视频标题和用户笔记，生成结构化的视频文案/笔记
  */
 export function generateVideoNote(title: string, rawNote: string, platform: string): string {
@@ -240,7 +369,6 @@ export function generateVideoNote(title: string, rawNote: string, platform: stri
   // 金句/摘录
   if (rawNote && rawNote.length > 50) {
     result += `━━━ 摘录与感悟 ━━━\n`;
-    // 取较长的句子作为摘录
     const sentences = splitSentences(rawNote).filter(s => s.length > 15);
     sentences.slice(0, 3).forEach(s => {
       result += `  "${s}"\n`;
@@ -269,6 +397,116 @@ export function generateVideoNote(title: string, rawNote: string, platform: stri
   result += `\n（在这里写下你的想法和收获...）\n`;
 
   return result;
+}
+
+/**
+ * 从知识内容生成视频脚本
+ * @param title 知识标题
+ * @param content 知识内容
+ * @param style 视频风格
+ * @param targetDuration 目标时长（秒），默认60秒
+ */
+export function generateVideoScript(
+  title: string,
+  content: string,
+  style: VideoStyle = 'knowledge',
+  targetDuration: number = 60
+): {
+  script: string;
+  titles: string[];
+  hook: string;
+  body: string[];
+  ending: string;
+  hashtags: string[];
+  estimatedDuration: number;
+  durationFormatted: string;
+} {
+  const fullText = title + ' ' + content;
+  const keywords = extractKeywords(fullText, 10);
+  const keyPoints = extractKeySentences(content, 6);
+  const actionItems = extractActionItems(content);
+
+  // 生成标题建议
+  const catchyTitles = generateCatchyTitles(title, keywords);
+
+  // 生成开头钩子
+  const hook = generateHook(style, keywords);
+
+  // 生成正文要点
+  const bodyPoints = keyPoints.slice(0, 5).map((p, i) => {
+    const transitions = [
+      '首先，',
+      '其次，',
+      '然后，',
+      '还有，',
+      '最后，',
+    ];
+    return `${transitions[i] || `第${i + 1}点，`}${p}`;
+  });
+
+  // 生成结尾
+  const ending = generateEnding(style);
+
+  // 组合完整脚本
+  let script = '';
+  script += `【标题建议】\n${catchyTitles.map((t, i) => `${i + 1}. ${t}`).join('\n')}\n\n`;
+  script += `━━━ 视频脚本 ━━━\n\n`;
+  script += `【开场 - 0:00】\n${hook}\n\n`;
+
+  if (bodyPoints.length > 0) {
+    script += `【正文】\n`;
+    bodyPoints.forEach((p, i) => {
+      script += `${i + 1}. ${p}\n\n`;
+    });
+  } else {
+    script += `【正文】\n${content.substring(0, 200)}...\n\n`;
+  }
+
+  if (actionItems.length > 0 && style !== 'emotion') {
+    script += `【行动建议】\n`;
+    actionItems.slice(0, 3).forEach((item, i) => {
+      script += `${i + 1}. ${item}\n`;
+    });
+    script += '\n';
+  }
+
+  script += `【结尾】\n${ending}\n\n`;
+
+  // 标签
+  const hashtags = keywords.slice(0, 5).map(k => `#${k.word}`);
+  script += `【推荐标签】\n${hashtags.join('  ')}\n`;
+
+  // 估算时长
+  const scriptText = hook + bodyPoints.join('') + ending;
+  const estimatedDuration = estimateVideoDuration(scriptText);
+  const durationFormatted = formatDuration(estimatedDuration);
+
+  script += `\n【预估时长】约 ${durationFormatted}（${estimatedDuration}秒）`;
+
+  return {
+    script,
+    titles: catchyTitles,
+    hook,
+    body: bodyPoints,
+    ending,
+    hashtags,
+    estimatedDuration,
+    durationFormatted,
+  };
+}
+
+/**
+ * 获取视频风格名称
+ */
+export function getVideoStyleName(style: VideoStyle): string {
+  const names: Record<VideoStyle, string> = {
+    knowledge: '知识科普',
+    tutorial: '教程讲解',
+    story: '故事叙述',
+    vlog: 'Vlog分享',
+    emotion: '情感共鸣',
+  };
+  return names[style] || '知识科普';
 }
 
 /**

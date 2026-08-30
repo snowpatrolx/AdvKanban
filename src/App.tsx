@@ -4,6 +4,7 @@ import BottomNav from './components/layout/BottomNav';
 import ToastContainer from './components/common/ToastContainer';
 import HomeKanbanPage from './pages/HomeKanbanPage';
 import KnowledgePage from './pages/KnowledgePage';
+import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
 import ProfilePage from './pages/ProfilePage';
 import AdventurePage from './pages/AdventurePage';
 import AIAnalysisPage from './pages/AIAnalysisPage';
@@ -31,6 +32,7 @@ function Layout() {
       <Routes>
         <Route path="/" element={<HomeKanbanPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
+        <Route path="/knowledge/graph" element={<KnowledgeGraphPage />} />
         <Route path="/adventure" element={<AdventurePage />} />
         <Route path="/ai" element={<AIAnalysisPage />} />
         <Route path="/pomodoro" element={<PomodoroPage />} />

@@ -60,7 +60,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.08';
+export const APP_VERSION = '1.09';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -851,6 +851,26 @@ export const useStore = create<StoreState>()(
         }
 
         return state;
+      },
+      onRehydrateStorage: () => (state) => {
+        // 水合完成后，自动归档超过两周的已完成任务
+        if (state && state.tasks) {
+          const twoWeeksAgo = new Date();
+          twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+          const cutoffStr = twoWeeksAgo.toISOString();
+
+          const toArchive = state.tasks.filter(t =>
+            !t.parentId && t.status === 'done' && !t.archived &&
+            t.completedAt && t.completedAt < cutoffStr
+          );
+
+          if (toArchive.length > 0) {
+            const archivedIds = new Set(toArchive.map(t => t.id));
+            state.tasks = state.tasks.map(t =>
+              archivedIds.has(t.id) ? { ...t, archived: true } : t
+            );
+          }
+        }
       },
     }
   )

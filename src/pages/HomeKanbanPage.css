@@ -450,6 +450,31 @@
   margin-top: 8px;
 }
 
+.quick-status-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.quick-status-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-card);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-status-btn.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
 /* 重复任务图标 */
 .task-repeat-icon {
   display: inline-block;
