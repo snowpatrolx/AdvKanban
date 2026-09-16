@@ -60,7 +60,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.09';
+export const APP_VERSION = '1.10';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -304,14 +304,14 @@ export const useStore = create<StoreState>()(
             : t
         );
 
-        // 如果是重复任务，创建下一个周期的新任务
+        // 如果是重复任务，创建下一个周期的新任务（保留原有任务状态）
         if (task.repeat !== 'none' && !task.parentId) {
           const nextDue = getNextDueDate(task.dueDate, task.repeat, task.repeatWeekdays);
           const nextCount = (task.repeatCount || 0) + 1;
           const newTask: Task = {
             ...task,
             id: generateId(),
-            status: 'todo',
+            status: task.status, // 保留原有的任务状态（todo/doing）
             completedAt: null,
             dueDate: nextDue,
             createdAt: new Date().toISOString(),

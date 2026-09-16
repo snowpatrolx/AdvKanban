@@ -5,6 +5,7 @@ import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
 import { IconBack, IconTrash, IconLink, IconVideo, IconExternalLink, IconSparkles, IconClipboard } from '../components/common/Icons';
 import { generateVideoNote, summarizeKnowledge, generateVideoScript, getVideoStyleName, type VideoStyle } from '../utils/aiSummary';
+import { fetchWebContent } from '../utils/webFetch';
 import './TaskDetailPage.css';
 
 export default function KnowledgeDetailPage() {
@@ -29,6 +30,7 @@ export default function KnowledgeDetailPage() {
   const [showVideoScript, setShowVideoScript] = useState(false);
   const [videoStyle, setVideoStyle] = useState<VideoStyle>('knowledge');
   const [aiLoading, setAiLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(false);
 
   useEffect(() => {
     if (existing) {
@@ -175,6 +177,56 @@ export default function KnowledgeDetailPage() {
     setTimeout(() => {
       setAiLoading(false);
     }, 600);
+  };
+
+  // 自动读取网页内容
+  const handleFetchWebContent = async () => {
+    const url = link.trim();
+    if (!url) {
+      addToast({ icon: '⚠', title: '请先输入网址链接' });
+      return;
+    }
+
+    setFetchLoading(true);
+    try {
+      const result = await fetchWebContent(url);
+
+      if (result.error) {
+        addToast({ icon: '⚠', title: result.error });
+      } else {
+        // 填充标题（如果标题为空）
+        if (result.title && !title.trim()) {
+          setTitle(result.title);
+        }
+
+        // 填充内容
+        if (result.content) {
+          let newContent = '';
+          if (result.description) {
+            newContent += `摘要：${result.description}\n\n`;
+          }
+          newContent += result.content;
+
+          setContent(prev => {
+            if (prev && prev.trim()) {
+              // 已有内容，追加到后面
+              return prev + '\n\n---\n\n' + newContent;
+            }
+            return newContent;
+          });
+        }
+
+        const parts: string[] = [];
+        if (result.title) parts.push('标题');
+        if (result.content) parts.push('正文');
+        if (result.description) parts.push('摘要');
+        addToast({ icon: '✓', title: `已读取${parts.join('、')}` });
+      }
+    } catch {
+      addToast({ icon: '⚠', title: '读取失败，请手动粘贴内容' });
+    } finally {
+      setFetchLoading(false);
+    }
   };
 
   const videoScript = (title || content)
@@ -496,13 +548,26 @@ export default function KnowledgeDetailPage() {
           <label className="form-label">
             <IconLink size={16} color="var(--color-primary)" /> 文章链接
           </label>
-          <input
-            className="form-input"
-            placeholder="粘贴链接（选填）"
-            value={link}
-            onChange={e => setLink(e.target.value)}
-            type="url"
-          />
+          <div className="link-input-row">
+            <input
+              className="form-input"
+              placeholder="粘贴链接（选填）"
+              value={link}
+              onChange={e => setLink(e.target.value)}
+              type="url"
+            />
+            {link.trim() && (
+              <button
+                type="button"
+                className={`btn btn-sm btn-primary fetch-web-btn ${fetchLoading ? 'loading' : ''}`}
+                onClick={handleFetchWebContent}
+                disabled={fetchLoading}
+              >
+                {fetchLoading ? '读取中...' : '读取内容'}
+              </button>
+            )}
+          </div>
+          <p className="link-fetch-hint">输入网址后点击「读取内容」可自动抓取网页正文</p>
         </div>
 
         {/* 视频链接 */}

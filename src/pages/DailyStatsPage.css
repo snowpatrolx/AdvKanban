@@ -1,0 +1,365 @@
+.daily-stats-page {
+  padding-bottom: 80px;
+}
+
+/* 页面头部 */
+.stats-page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 16px;
+}
+
+.stats-page-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stats-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+/* 今日概览卡片 */
+.stats-overview-card {
+  background: var(--color-card);
+  margin: 0 12px 12px;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.stats-overview-date {
+  font-size: 13px;
+  color: var(--color-text-light);
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.stats-overview-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin-bottom: 14px;
+}
+
+.stats-overview-item {
+  text-align: center;
+  flex: 1;
+}
+
+.stats-overview-num {
+  display: block;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1.2;
+}
+
+.stats-overview-label {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-light);
+  margin-top: 4px;
+}
+
+.stats-overview-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--color-border);
+}
+
+/* 进度条 */
+.stats-progress-bar {
+  margin-bottom: 12px;
+}
+
+.stats-progress-track {
+  height: 8px;
+  background: var(--color-bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stats-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary), #00b894);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* 状态标签 */
+.stats-status-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.stats-status-tag {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.stats-status-tag.done {
+  background: rgba(0, 184, 148, 0.1);
+  color: #00b894;
+}
+
+.stats-status-tag.doing {
+  background: rgba(108, 92, 231, 0.1);
+  color: #6c5ce7;
+}
+
+.stats-status-tag.todo {
+  background: rgba(253, 203, 110, 0.15);
+  color: #d4a017;
+}
+
+/* 本周柱状图 */
+.stats-chart-card {
+  margin: 0 12px 12px;
+}
+
+.stats-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.stats-card-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.stats-card-subtitle {
+  font-size: 12px;
+  color: var(--color-text-light);
+}
+
+.stats-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 140px;
+  padding-top: 8px;
+}
+
+.stats-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.stats-bar-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 4px;
+  height: 16px;
+}
+
+.stats-bar-wrapper {
+  flex: 1;
+  width: 100%;
+  max-width: 32px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 4px 4px 0 0;
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.stats-bar-fill {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  min-height: 3px;
+  transition: height 0.5s ease;
+}
+
+.stats-bar-col.today .stats-bar-fill {
+  box-shadow: 0 0 0 2px var(--color-primary) inset;
+}
+
+.stats-bar-label {
+  font-size: 10px;
+  color: var(--color-text-light);
+  margin-top: 4px;
+}
+
+.stats-bar-weekday {
+  font-size: 10px;
+  color: var(--color-text-light);
+}
+
+.stats-bar-col.today .stats-bar-weekday {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* 迷你卡片 */
+.stats-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 0 12px 12px;
+}
+
+.stats-mini-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 4px;
+  gap: 4px;
+}
+
+.stats-mini-num {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.stats-mini-label {
+  font-size: 10px;
+  color: var(--color-text-light);
+  text-align: center;
+}
+
+/* 等级进度 */
+.stats-level-card {
+  margin: 0 12px 12px;
+  padding: 14px 16px;
+}
+
+.stats-level-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.stats-level-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.stats-level-points {
+  font-size: 12px;
+  color: var(--color-text-light);
+}
+
+.stats-level-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stats-level-track {
+  flex: 1;
+  height: 8px;
+  background: var(--color-bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.stats-level-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.stats-level-hint {
+  font-size: 11px;
+  color: var(--color-text-light);
+  white-space: nowrap;
+}
+
+/* 今日完成任务 */
+.stats-tasks-card {
+  margin: 0 12px 12px;
+}
+
+.stats-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stats-task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.stats-task-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stats-task-title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-task-repeat {
+  font-size: 10px;
+  color: var(--color-primary);
+  background: rgba(108, 92, 231, 0.08);
+  padding: 2px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.stats-task-time {
+  font-size: 11px;
+  color: var(--color-text-light);
+  white-space: nowrap;
+}
+
+/* 空状态 */
+.stats-empty {
+  text-align: center;
+  padding: 24px 12px;
+}
+
+.stats-empty p {
+  font-size: 13px;
+  color: var(--color-text-light);
+  margin: 0;
+}
+
+/* 响应式 */
+@media (max-width: 380px) {
+  .stats-mini-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-overview-num {
+    font-size: 24px;
+  }
+}

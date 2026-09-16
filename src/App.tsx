@@ -8,7 +8,7 @@ import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
 import ProfilePage from './pages/ProfilePage';
 import AdventurePage from './pages/AdventurePage';
 import AIAnalysisPage from './pages/AIAnalysisPage';
-import PomodoroPage from './pages/PomodoroPage';
+import DailyStatsPage from './pages/DailyStatsPage';
 import TaskDetailPage from './pages/TaskDetailPage';
 import KnowledgeDetailPage from './pages/KnowledgeDetailPage';
 import CategoryManagePage from './pages/CategoryManagePage';
@@ -24,7 +24,7 @@ function ScrollToTop() {
 
 function Layout() {
   const { pathname } = useLocation();
-  const showNav = ['/', '/knowledge', '/pomodoro', '/adventure', '/ai', '/profile'].includes(pathname);
+  const showNav = ['/', '/knowledge', '/stats', '/adventure', '/ai', '/profile'].includes(pathname);
 
   return (
     <>
@@ -35,7 +35,7 @@ function Layout() {
         <Route path="/knowledge/graph" element={<KnowledgeGraphPage />} />
         <Route path="/adventure" element={<AdventurePage />} />
         <Route path="/ai" element={<AIAnalysisPage />} />
-        <Route path="/pomodoro" element={<PomodoroPage />} />
+        <Route path="/stats" element={<DailyStatsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/task/:id" element={<TaskDetailPage />} />
         <Route path="/task/new" element={<TaskDetailPage />} />

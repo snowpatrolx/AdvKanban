@@ -638,3 +638,30 @@
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+
+/* 网页内容读取 */
+.link-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.link-input-row .form-input {
+  flex: 1;
+}
+
+.fetch-web-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fetch-web-btn.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.link-fetch-hint {
+  font-size: 11px;
+  color: var(--color-text-light);
+  margin: 6px 0 0;
+}

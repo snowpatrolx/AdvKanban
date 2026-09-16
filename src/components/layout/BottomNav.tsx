@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { IconTasks, IconBook, IconClock, IconMap, IconUser } from '../common/Icons';
+import { IconTasks, IconBook, IconChart, IconMap, IconUser } from '../common/Icons';
 import './BottomNav.css';
 
 const tabs = [
   { path: '/', label: '任务', Icon: IconTasks },
   { path: '/knowledge', label: '知识库', Icon: IconBook },
-  { path: '/pomodoro', label: '番茄钟', Icon: IconClock },
+  { path: '/stats', label: '统计', Icon: IconChart },
   { path: '/adventure', label: '冒险', Icon: IconMap },
   { path: '/profile', label: '我的', Icon: IconUser },
 ];
