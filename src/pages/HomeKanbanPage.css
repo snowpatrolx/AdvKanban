@@ -136,9 +136,24 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   padding-bottom: 4px;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  position: relative;
+}
+
+.home-category-filter::-webkit-scrollbar {
+  display: none;
+}
+
+/* 滑动提示 */
+.swipe-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-text-light);
+  margin-bottom: 10px;
+  opacity: 0.6;
 }
 
 .category-chip {
@@ -501,6 +516,14 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--color-primary);
+}
+
+.task-repeat-days {
+  font-size: 10px;
+  color: var(--color-text-light);
+  margin-left: 2px;
+  padding-left: 3px;
+  border-left: 1px solid rgba(108, 92, 231, 0.2);
 }
 
 /* 子任务标签 */

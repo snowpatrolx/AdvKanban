@@ -146,6 +146,7 @@ export default function TaskDetailPage() {
     none: '不重复',
     daily: '每天',
     weekly: '每周',
+    biweekly: '每两周',
     monthly: '每月',
     weekdays: '自定义',
     workdays: '法定工作日',

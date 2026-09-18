@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
@@ -14,7 +14,7 @@ import {
   IconFlame, IconRepeat, IconChevronDown, IconChevronRight, IconSubtask, IconDrag,
   IconFolder, IconRefresh,
 } from '../components/common/Icons';
-import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor, isTaskToday } from '../utils/taskHelpers';
+import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor, isTaskToday, getDaysUntilDue, formatDaysUntil } from '../utils/taskHelpers';
 import type { Task, TaskStatus, Category, TaskPriority } from '../types';
 import './HomeKanbanPage.css';
 
@@ -51,6 +51,43 @@ export default function HomeKanbanPage() {
   const [quickCategory, setQuickCategory] = useState('');
   const [quickDate, setQuickDate] = useState('');
   const [quickStatus, setQuickStatus] = useState<TaskStatus>('todo');
+
+  // 分类滑动切换
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const touchEndX = useRef(0);
+  const touchEndY = useRef(0);
+
+  // 所有分类选项（包含"全部"）
+  const categoryOptions = useMemo(() => {
+    return ['', ...categories.map(c => c.id)];
+  }, [categories]);
+
+  // 滑动切换分类
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    touchEndX.current = e.changedTouches[0].clientX;
+    touchEndY.current = e.changedTouches[0].clientY;
+
+    const diffX = touchEndX.current - touchStartX.current;
+    const diffY = touchEndY.current - touchStartY.current;
+
+    // 只在水平滑动距离大于垂直滑动且超过阈值时触发
+    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      const currentIdx = categoryOptions.indexOf(filterCategory);
+      if (diffX > 0 && currentIdx > 0) {
+        // 右滑 -> 上一个分类
+        setFilterCategory(categoryOptions[currentIdx - 1]);
+      } else if (diffX < 0 && currentIdx < categoryOptions.length - 1) {
+        // 左滑 -> 下一个分类
+        setFilterCategory(categoryOptions[currentIdx + 1]);
+      }
+    }
+  }, [filterCategory, categoryOptions]);
 
   // Kanban drag state
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -318,7 +355,8 @@ export default function HomeKanbanPage() {
       </div>
 
       {/* 分类筛选 */}
-      <div className="home-category-filter">
+      <div className="swipe-hint">← 左右滑动切换分类 →</div>
+      <div className="home-category-filter" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <button
           className={`category-chip ${!filterCategory ? 'active' : ''}`}
           onClick={() => setFilterCategory('')}
@@ -365,6 +403,7 @@ export default function HomeKanbanPage() {
 
       {/* 列表视图 */}
       {viewMode === 'list' && statusFilter !== 'archived' && (
+        <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -427,10 +466,11 @@ export default function HomeKanbanPage() {
             ) : null}
           </DragOverlay>
         </DndContext>
+        </div>
       )}
-
       {/* 看板视图 */}
       {viewMode === 'kanban' && statusFilter !== 'archived' && (
+        <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -456,6 +496,7 @@ export default function HomeKanbanPage() {
             ) : null}
           </DragOverlay>
         </DndContext>
+        </div>
       )}
 
       {/* 悬浮添加按钮 */}
@@ -575,6 +616,13 @@ function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleS
             <span className="task-repeat-badge">
               <IconRepeat size={12} color="var(--color-text-light)" />
               <span className="task-repeat-count">{task.repeatCount || 0}</span>
+              {(() => {
+                const days = getDaysUntilDue(task);
+                if (days !== null && days >= 0) {
+                  return <span className="task-repeat-days">{formatDaysUntil(days)}</span>;
+                }
+                return null;
+              })()}
             </span>
           )}
         </div>
@@ -691,6 +739,13 @@ function KanbanCard({
             <span className="task-repeat-badge kanban">
               <IconRepeat size={11} color="var(--color-text-light)" />
               <span className="task-repeat-count">{task.repeatCount || 0}</span>
+              {(() => {
+                const days = getDaysUntilDue(task);
+                if (days !== null && days >= 0) {
+                  return <span className="task-repeat-days">{formatDaysUntil(days)}</span>;
+                }
+                return null;
+              })()}
             </span>
           )}
         </div>

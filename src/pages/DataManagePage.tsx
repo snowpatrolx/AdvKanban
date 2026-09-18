@@ -12,7 +12,7 @@ import './DataManagePage.css';
 
 export default function DataManagePage() {
   const navigate = useNavigate();
-  const { tasks, categories, knowledge, dailyRecords, userProfile, exportJSON, importJSON, resetAll } = useStore();
+  const { tasks, categories, knowledge: _knowledge, dailyRecords, userProfile, exportJSON, importJSON, resetAll } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const fileRef = useRef<HTMLInputElement>(null);
   const [showReset, setShowReset] = useState(false);
@@ -84,9 +84,9 @@ export default function DataManagePage() {
         </div>
         <div className="data-stat-row">
           <span className="data-stat-label">
-            <IconDatabase size={18} color="var(--color-primary)" /> 知识
+            <IconDatabase size={18} color="var(--color-primary)" /> 日志
           </span>
-          <span>{knowledge.length} 条</span>
+          <span>{dailyRecords.length} 条</span>
         </div>
       </div>
 

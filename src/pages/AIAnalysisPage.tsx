@@ -6,7 +6,7 @@ import { CHAPTERS } from '../data/chapters';
 import { BADGES } from '../data/badges';
 import {
   IconAI, IconFlame, IconTrophy, IconWarning, IconArrowRight,
-  IconCheckCircle, IconBook, IconSword, IconStar, IconChart,
+  IconCheckCircle, IconSword, IconStar, IconChart,
 } from '../components/common/Icons';
 import './AIAnalysisPage.css';
 
@@ -20,7 +20,7 @@ interface Insight {
 
 export default function AIAnalysisPage() {
   const navigate = useNavigate();
-  const { tasks, categories, knowledge, userProfile, userBadges, storyProgress, dailyRecords } = useStore();
+  const { tasks, categories, userProfile, userBadges, storyProgress, dailyRecords } = useStore();
 
   const levelInfo = getLevelProgress(userProfile.totalPoints);
   const todayStr = new Date().toISOString().substring(0, 10);
@@ -138,17 +138,6 @@ export default function AIAnalysisPage() {
       }
     }
 
-    // 知识库偏少
-    if (knowledge.length < 5) {
-      list.push({
-        type: 'tip',
-        icon: <IconBook size={18} color="#6c5ce7" />,
-        title: `知识库仅 ${knowledge.length} 条`,
-        desc: '创建知识可获 +5 经验并推进冒险',
-        action: { label: '去创建', path: '/knowledge' },
-      });
-    }
-
     // 正面反馈
     if (list.length === 0 || (overdueTasks.length === 0 && userProfile.currentStreak >= 3)) {
       list.push({
@@ -160,7 +149,7 @@ export default function AIAnalysisPage() {
     }
 
     return list.slice(0, 5);
-  }, [overdueTasks, doingTasks, highPriorityPending, userProfile, currentChapter, storyProgress, knowledge, pendingTasks]);
+  }, [overdueTasks, doingTasks, highPriorityPending, userProfile, currentChapter, storyProgress, pendingTasks]);
 
   // 下一个徽章
   const nextBadge = lockedBadges[0];

@@ -1,7 +1,7 @@
 // ===== 任务相关类型 =====
 export type TaskStatus = 'todo' | 'doing' | 'done';
 export type TaskPriority = 'high' | 'medium' | 'low' | null;
-export type RepeatType = 'none' | 'daily' | 'weekly' | 'monthly' | 'weekdays' | 'workdays' | 'holidays';
+export type RepeatType = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'weekdays' | 'workdays' | 'holidays';
 
 // 日志类型：damage=伤害, task=任务完成, story=剧情
 export type LogType = 'damage' | 'task' | 'story';

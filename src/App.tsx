@@ -3,14 +3,11 @@ import { useEffect } from 'react';
 import BottomNav from './components/layout/BottomNav';
 import ToastContainer from './components/common/ToastContainer';
 import HomeKanbanPage from './pages/HomeKanbanPage';
-import KnowledgePage from './pages/KnowledgePage';
-import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
 import ProfilePage from './pages/ProfilePage';
 import AdventurePage from './pages/AdventurePage';
 import AIAnalysisPage from './pages/AIAnalysisPage';
 import DailyStatsPage from './pages/DailyStatsPage';
 import TaskDetailPage from './pages/TaskDetailPage';
-import KnowledgeDetailPage from './pages/KnowledgeDetailPage';
 import CategoryManagePage from './pages/CategoryManagePage';
 import DataManagePage from './pages/DataManagePage';
 
@@ -24,23 +21,19 @@ function ScrollToTop() {
 
 function Layout() {
   const { pathname } = useLocation();
-  const showNav = ['/', '/knowledge', '/stats', '/adventure', '/ai', '/profile'].includes(pathname);
+  const showNav = ['/', '/stats', '/adventure', '/ai', '/profile'].includes(pathname);
 
   return (
     <>
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<HomeKanbanPage />} />
-        <Route path="/knowledge" element={<KnowledgePage />} />
-        <Route path="/knowledge/graph" element={<KnowledgeGraphPage />} />
         <Route path="/adventure" element={<AdventurePage />} />
         <Route path="/ai" element={<AIAnalysisPage />} />
         <Route path="/stats" element={<DailyStatsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/task/:id" element={<TaskDetailPage />} />
         <Route path="/task/new" element={<TaskDetailPage />} />
-        <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
-        <Route path="/knowledge/new" element={<KnowledgeDetailPage />} />
         <Route path="/categories" element={<CategoryManagePage />} />
         <Route path="/data" element={<DataManagePage />} />
       </Routes>

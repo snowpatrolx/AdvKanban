@@ -13,7 +13,7 @@ import './ProfilePage.css';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { userProfile, userBadges, knowledge, tasks, storyProgress, archiveCompletedTasks } = useStore();
+  const { userProfile, userBadges, tasks, storyProgress, archiveCompletedTasks } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const levelInfo = getLevelProgress(userProfile.totalPoints);
 
@@ -84,8 +84,8 @@ export default function ProfilePage() {
           <span className="profile-stat-label">最长连续</span>
         </div>
         <div className="profile-stat-item">
-          <span className="profile-stat-num">{knowledge.length}</span>
-          <span className="profile-stat-label">知识条目</span>
+          <span className="profile-stat-num">{tasks.filter(t => !t.parentId && !t.archived).length}</span>
+          <span className="profile-stat-label">活跃任务</span>
         </div>
       </div>
 

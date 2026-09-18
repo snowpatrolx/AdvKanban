@@ -60,7 +60,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.10';
+export const APP_VERSION = '1.11';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -171,6 +171,11 @@ function getNextDueDate(
     case 'weekly': {
       const d = new Date(dueDate);
       d.setDate(d.getDate() + 7);
+      return d.toISOString().substring(0, 10);
+    }
+    case 'biweekly': {
+      const d = new Date(dueDate);
+      d.setDate(d.getDate() + 14);
       return d.toISOString().substring(0, 10);
     }
     case 'monthly': {
