@@ -178,7 +178,7 @@ export function formatDaysUntil(days: number | null): string {
   if (days === 0) return '今天';
   if (days === 1) return '明天';
   if (days === -1) return '昨天';
-  if (days < 0) return `${Math.abs(days)}天前`;
-  if (days <= 7) return `${days}天后`;
-  return `${days}天后`;
+  if (days < 0) return `逾期${Math.abs(days)}天`;
+  if (days <= 7) return `还差${days}天`;
+  return `还差${days}天`;
 }

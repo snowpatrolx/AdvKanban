@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
+import { useToastStore } from '../components/common/Toast';
 import { CHAPTERS } from '../data/chapters';
 import { IconCheck, IconPin, IconLock, IconMap, IconSword, IconBook } from '../components/common/Icons';
 import type { LogType } from '../types';
@@ -12,8 +13,11 @@ const LOG_TYPE_LABELS: Record<LogType, string> = {
 };
 
 export default function AdventurePage() {
-  const { storyProgress, storyLogs, userProfile, knowledge } = useStore();
+  const { storyProgress, storyLogs, userProfile, knowledge, adventureInteract } = useStore();
+  const addToast = useToastStore(s => s.addToast);
   const [activeTab, setActiveTab] = useState<'map' | 'logs'>('logs');
+  const [interactMsg, setInteractMsg] = useState<string | null>(null);
+  const [isAttacking, setIsAttacking] = useState(false);
 
   const currentChapter = CHAPTERS.find(c => c.id === storyProgress.currentChapter);
 
@@ -34,6 +38,31 @@ export default function AdventurePage() {
     completedTaskCount: userProfile.completedTaskCount,
     knowledgeCount: knowledge.length,
     currentStreak: userProfile.currentStreak,
+  };
+
+  // Boss 是否已被击败
+  const bossDefeated = currentChapter ? storyProgress.defeatedBosses.includes(currentChapter.id) : false;
+
+  // 互动处理
+  const handleInteract = (action: 'attack' | 'skill' | 'defend') => {
+    if (!currentChapter || bossDefeated) return;
+    setIsAttacking(true);
+    setInteractMsg(null);
+
+    setTimeout(() => {
+      const result = adventureInteract(currentChapter.id, action);
+      setInteractMsg(result.message);
+
+      if (result.bossDamage > 0) {
+        addToast({ icon: '⚔', title: `${result.bossDamage} 点伤害！` });
+      }
+      if (result.bossDefeated) {
+        addToast({ icon: '★', title: `击败了 ${currentChapter.bossName}！` });
+      }
+
+      setIsAttacking(false);
+      setTimeout(() => setInteractMsg(null), 3000);
+    }, 300);
   };
 
   return (
@@ -90,6 +119,47 @@ export default function AdventurePage() {
                 />
               </div>
               <p className="adventure-boss-hint">完成任务或子任务即可对 Boss 造成伤害</p>
+
+              {/* 互动按钮 */}
+              {!bossDefeated && (
+                <div className="adventure-interact">
+                  <button
+                    className={`interact-btn attack ${isAttacking ? 'disabled' : ''}`}
+                    onClick={() => handleInteract('attack')}
+                    disabled={isAttacking}
+                  >
+                    <IconSword size={16} color="#fff" /> 攻击
+                  </button>
+                  <button
+                    className={`interact-btn skill ${isAttacking ? 'disabled' : ''}`}
+                    onClick={() => handleInteract('skill')}
+                    disabled={isAttacking}
+                  >
+                    <IconSword size={16} color="#fff" /> 技能 (10EXP)
+                  </button>
+                  <button
+                    className={`interact-btn defend ${isAttacking ? 'disabled' : ''}`}
+                    onClick={() => handleInteract('defend')}
+                    disabled={isAttacking}
+                  >
+                    <IconSword size={16} color="#fff" /> 防御
+                  </button>
+                </div>
+              )}
+
+              {/* 互动反馈消息 */}
+              {interactMsg && (
+                <div className="adventure-interact-msg">
+                  {interactMsg}
+                </div>
+              )}
+
+              {/* Boss 已击败提示 */}
+              {bossDefeated && (
+                <div className="adventure-boss-defeated">
+                  <IconCheck size={16} color="#00b894" /> Boss 已被击败
+                </div>
+              )}
             </div>
           )}
 

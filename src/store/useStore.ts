@@ -55,12 +55,15 @@ interface StoreState {
   importJSON: (json: string) => boolean;
   resetAll: () => void;
 
+  // 互动
+  adventureInteract: (chapterId: number, action: string) => { bossDamage: number; message: string; bossDefeated: boolean };
+
   // 内部
   _processTaskCompletion: (task: Task) => { pointsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.11';
+export const APP_VERSION = '1.12';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -781,6 +784,112 @@ export const useStore = create<StoreState>()(
           storyProgress: defaultStoryProgress,
           storyLogs: [],
         });
+      },
+
+      adventureInteract: (chapterId, action) => {
+        const state = get();
+        const chapter = CHAPTERS.find(c => c.id === chapterId);
+        if (!chapter || !chapter.bossName) {
+          return { bossDamage: 0, message: '该章节没有 Boss', bossDefeated: false };
+        }
+
+        // 检查 Boss 是否已被击败
+        if (state.storyProgress.defeatedBosses.includes(chapterId)) {
+          return { bossDamage: 0, message: `${chapter.bossName} 已被击败`, bossDefeated: false };
+        }
+
+        // 检查是否是当前章节
+        if (state.storyProgress.currentChapter !== chapterId) {
+          return { bossDamage: 0, message: '该章节尚未解锁', bossDefeated: false };
+        }
+
+        // 根据不同互动类型计算伤害
+        let bossDamage = 0;
+        let message = '';
+
+        switch (action) {
+          case 'attack': {
+            // 攻击：随机 5-15 点伤害
+            bossDamage = Math.floor(Math.random() * 11) + 5;
+            message = `你对 ${chapter.bossName} 发动攻击，造成 ${bossDamage} 点伤害！`;
+            break;
+          }
+          case 'skill': {
+            // 技能：消耗经验值，造成 20-30 点伤害
+            const cost = 10;
+            if (state.userProfile.totalPoints < cost) {
+              return { bossDamage: 0, message: '经验值不足，需要 10 点经验来释放技能', bossDefeated: false };
+            }
+            bossDamage = Math.floor(Math.random() * 11) + 20;
+            message = `你释放了强力技能，对 ${chapter.bossName} 造成 ${bossDamage} 点伤害！消耗 ${cost} 经验值`;
+
+            // 扣除经验值
+            set(s => ({
+              userProfile: {
+                ...s.userProfile,
+                totalPoints: Math.max(0, s.userProfile.totalPoints - cost),
+              },
+            }));
+            break;
+          }
+          case 'defend': {
+            // 防御：减少下次受击，但可以获得少量反击伤害
+            bossDamage = Math.floor(Math.random() * 6) + 3;
+            message = `你举盾防御并反击，对 ${chapter.bossName} 造成 ${bossDamage} 点伤害！`;
+            break;
+          }
+          default:
+            return { bossDamage: 0, message: '未知操作', bossDefeated: false };
+        }
+
+        // 计算 Boss 剩余 HP
+        const bossMaxHP = chapter.bossHP;
+        const currentHP = state.storyProgress.bossCurrentHP[chapterId] ?? bossMaxHP;
+        const newHP = Math.max(0, currentHP - bossDamage);
+        const bossDefeated = newHP === 0;
+
+        // 更新状态
+        set(s => {
+          const newStoryProgress = { ...s.storyProgress };
+          newStoryProgress.bossCurrentHP = {
+            ...newStoryProgress.bossCurrentHP,
+            [chapterId]: newHP,
+          };
+
+          const newStoryLogs = [...s.storyLogs];
+          newStoryLogs.push({
+            id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+            chapterId,
+            type: 'damage' as LogType,
+            text: message,
+            createdAt: new Date().toISOString(),
+          });
+
+          if (bossDefeated && !newStoryProgress.defeatedBosses.includes(chapterId)) {
+            newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, chapterId];
+            newStoryLogs.push({
+              id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-defeat`,
+              chapterId,
+              type: 'story' as LogType,
+              text: `你成功击败了 ${chapter.bossName}！新的冒险篇章即将开启...`,
+              createdAt: new Date().toISOString(),
+            });
+
+            // 解锁下一章
+            const nextChapter = CHAPTERS.find(c => c.id === chapterId + 1);
+            if (nextChapter && !newStoryProgress.unlockedChapters.includes(nextChapter.id)) {
+              newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
+              newStoryProgress.currentChapter = nextChapter.id;
+            }
+          }
+
+          return {
+            storyProgress: newStoryProgress,
+            storyLogs: newStoryLogs,
+          };
+        });
+
+        return { bossDamage, message, bossDefeated };
       },
     }),
     {

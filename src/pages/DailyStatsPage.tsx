@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { getLevelByPoints, getLevelProgress } from '../utils/gamification';
 import { getTodayStr, daysBetween } from '../utils/id';
@@ -90,28 +90,16 @@ export default function DailyStatsPage() {
       {/* 今日概览卡片 */}
       <div className="stats-overview-card">
         <div className="stats-overview-date">{new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</div>
-        <div className="stats-overview-grid">
-          <div className="stats-overview-item">
-            <span className="stats-overview-num">{todayDone}</span>
-            <span className="stats-overview-label">今日完成</span>
-          </div>
-          <div className="stats-overview-divider" />
-          <div className="stats-overview-item">
-            <span className="stats-overview-num">{todayTasks.length}</span>
-            <span className="stats-overview-label">总任务数</span>
-          </div>
-          <div className="stats-overview-divider" />
-          <div className="stats-overview-item">
-            <span className="stats-overview-num">{completionRate}%</span>
-            <span className="stats-overview-label">完成率</span>
-          </div>
-        </div>
 
-        {/* 完成进度条 */}
-        <div className="stats-progress-bar">
-          <div className="stats-progress-track">
-            <div className="stats-progress-fill" style={{ width: `${completionRate}%` }} />
-          </div>
+        {/* 轮盘 */}
+        <div className="stats-wheel-section">
+          <StatsWheel
+            done={todayDone}
+            doing={todayDoing}
+            todo={todayTodo}
+            total={todayTasks.length}
+            completionRate={completionRate}
+          />
         </div>
 
         {/* 状态分布 */}
@@ -219,6 +207,128 @@ export default function DailyStatsPage() {
             <p>今天还没完成任务，开始你的第一个任务吧！</p>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ===== 轮盘组件 =====
+function StatsWheel({ done, doing, todo, total, completionRate }: {
+  done: number;
+  doing: number;
+  todo: number;
+  total: number;
+  completionRate: number;
+}) {
+  const [animatedRate, setAnimatedRate] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setAnimatedRate(completionRate), 100);
+    return () => clearTimeout(timer);
+  }, [completionRate]);
+
+  const radius = 70;
+  const stroke = 16;
+  const cx = 90;
+  const cy = 90;
+  const circumference = 2 * Math.PI * radius;
+  const doneAngle = total > 0 ? (done / total) * circumference : 0;
+  const doingAngle = total > 0 ? (doing / total) * circumference : 0;
+  const rateOffset = circumference - (animatedRate / 100) * circumference;
+
+  return (
+    <div className="stats-wheel-wrap">
+      <svg width="180" height="180" viewBox="0 0 180 180" className="stats-wheel-svg">
+        {/* 背景圆环 */}
+        <circle
+          cx={cx} cy={cy} r={radius}
+          fill="none"
+          stroke="var(--color-bg)"
+          strokeWidth={stroke}
+        />
+        {/* 已完成弧 */}
+        {done > 0 && (
+          <circle
+            cx={cx} cy={cy} r={radius}
+            fill="none"
+            stroke="#00b894"
+            strokeWidth={stroke}
+            strokeDasharray={`${doneAngle} ${circumference - doneAngle}`}
+            strokeDashoffset={0}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${cx} ${cy})`}
+            className="wheel-segment done"
+          />
+        )}
+        {/* 进行中弧 */}
+        {doing > 0 && (
+          <circle
+            cx={cx} cy={cy} r={radius}
+            fill="none"
+            stroke="#fdcb6e"
+            strokeWidth={stroke}
+            strokeDasharray={`${doingAngle} ${circumference - doingAngle}`}
+            strokeDashoffset={-doneAngle}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${cx} ${cy})`}
+            className="wheel-segment doing"
+          />
+        )}
+        {/* 待办弧 */}
+        {todo > 0 && (
+          <circle
+            cx={cx} cy={cy} r={radius}
+            fill="none"
+            stroke="#6c5ce7"
+            strokeWidth={stroke}
+            strokeDasharray={`${(todo / total) * circumference} ${circumference - (todo / total) * circumference}`}
+            strokeDashoffset={-(doneAngle + doingAngle)}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${cx} ${cy})`}
+            className="wheel-segment todo"
+          />
+        )}
+        {/* 完成率进度环（内层） */}
+        <circle
+          cx={cx} cy={cy} r={radius - stroke - 4}
+          fill="none"
+          stroke="var(--color-bg)"
+          strokeWidth={3}
+        />
+        <circle
+          cx={cx} cy={cy} r={radius - stroke - 4}
+          fill="none"
+          stroke="var(--color-primary)"
+          strokeWidth={3}
+          strokeDasharray={circumference}
+          strokeDashoffset={rateOffset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${cx} ${cy})`}
+          className="wheel-progress-ring"
+        />
+        {/* 中心文字 */}
+        <text x={cx} y={cy - 8} textAnchor="middle" className="wheel-center-num">
+          {animatedRate}%
+        </text>
+        <text x={cx} y={cy + 12} textAnchor="middle" className="wheel-center-label">
+          {done}/{total}
+        </text>
+      </svg>
+
+      {/* 轮盘图例 */}
+      <div className="stats-wheel-legend">
+        <span className="wheel-legend-item">
+          <span className="wheel-legend-dot" style={{ background: '#00b894' }} />
+          完成 {done}
+        </span>
+        <span className="wheel-legend-item">
+          <span className="wheel-legend-dot" style={{ background: '#fdcb6e' }} />
+          进行 {doing}
+        </span>
+        <span className="wheel-legend-item">
+          <span className="wheel-legend-dot" style={{ background: '#6c5ce7' }} />
+          待办 {todo}
+        </span>
       </div>
     </div>
   );

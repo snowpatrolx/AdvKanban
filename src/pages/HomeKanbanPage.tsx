@@ -52,42 +52,37 @@ export default function HomeKanbanPage() {
   const [quickDate, setQuickDate] = useState('');
   const [quickStatus, setQuickStatus] = useState<TaskStatus>('todo');
 
-  // 分类滑动切换
+  // 状态滑动切换
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
-  const touchEndX = useRef(0);
-  const touchEndY = useRef(0);
 
-  // 所有分类选项（包含"全部"）
-  const categoryOptions = useMemo(() => {
-    return ['', ...categories.map(c => c.id)];
-  }, [categories]);
+  // 状态筛选选项顺序：all -> todo -> doing -> done -> archived
+  const statusOptions: StatusFilter[] = useMemo(() => ['all', 'todo', 'doing', 'done', 'archived'], []);
 
-  // 滑动切换分类
+  // 滑动切换状态
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    touchEndX.current = e.changedTouches[0].clientX;
-    touchEndY.current = e.changedTouches[0].clientY;
-
-    const diffX = touchEndX.current - touchStartX.current;
-    const diffY = touchEndY.current - touchStartY.current;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const diffX = endX - touchStartX.current;
+    const diffY = endY - touchStartY.current;
 
     // 只在水平滑动距离大于垂直滑动且超过阈值时触发
     if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
-      const currentIdx = categoryOptions.indexOf(filterCategory);
+      const currentIdx = statusOptions.indexOf(statusFilter);
       if (diffX > 0 && currentIdx > 0) {
-        // 右滑 -> 上一个分类
-        setFilterCategory(categoryOptions[currentIdx - 1]);
-      } else if (diffX < 0 && currentIdx < categoryOptions.length - 1) {
-        // 左滑 -> 下一个分类
-        setFilterCategory(categoryOptions[currentIdx + 1]);
+        // 右滑 -> 上一个状态
+        setStatusFilter(statusOptions[currentIdx - 1]);
+      } else if (diffX < 0 && currentIdx < statusOptions.length - 1) {
+        // 左滑 -> 下一个状态
+        setStatusFilter(statusOptions[currentIdx + 1]);
       }
     }
-  }, [filterCategory, categoryOptions]);
+  }, [statusFilter, statusOptions]);
 
   // Kanban drag state
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -355,8 +350,8 @@ export default function HomeKanbanPage() {
       </div>
 
       {/* 分类筛选 */}
-      <div className="swipe-hint">← 左右滑动切换分类 →</div>
-      <div className="home-category-filter" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div className="swipe-hint">← 左右滑动切换状态 →</div>
+      <div className="home-category-filter">
         <button
           className={`category-chip ${!filterCategory ? 'active' : ''}`}
           onClick={() => setFilterCategory('')}
@@ -376,7 +371,7 @@ export default function HomeKanbanPage() {
 
       {/* 已归档任务视图 */}
       {statusFilter === 'archived' && (
-        <div className="task-section archived-section">
+        <div className="task-section archived-section" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <h3 className="task-section-title">
             <IconFolder size={16} color="var(--color-text-light)" /> 已归档任务
           </h3>
@@ -643,6 +638,19 @@ function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleS
               <span style={{ marginLeft: 3 }}>{formatDate(task.dueDate)}</span>
             </span>
           )}
+          {(() => {
+            const days = getDaysUntilDue(task);
+            if (days !== null && days >= 0) {
+              const isToday = days === 0;
+              const isSoon = days > 0 && days <= 3;
+              return (
+                <span className={`task-countdown ${isToday ? 'today' : isSoon ? 'soon' : ''}`}>
+                  {formatDaysUntil(days)}
+                </span>
+              );
+            }
+            return null;
+          })()}
           {subtasks.length > 0 && (
             <span className="tag tag-subtask" onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
               <IconSubtask size={12} color="var(--color-text-secondary)" />
@@ -764,6 +772,19 @@ function KanbanCard({
               <span style={{ marginLeft: 3 }}>{formatDate(task.dueDate)}</span>
             </span>
           )}
+          {(() => {
+            const days = getDaysUntilDue(task);
+            if (days !== null && days >= 0) {
+              const isToday = days === 0;
+              const isSoon = days > 0 && days <= 3;
+              return (
+                <span className={`task-countdown kanban ${isToday ? 'today' : isSoon ? 'soon' : ''}`}>
+                  {formatDaysUntil(days)}
+                </span>
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
     </>

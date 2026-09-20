@@ -166,6 +166,83 @@
   margin-top: 8px;
 }
 
+/* 互动按钮 */
+.adventure-interact {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.interact-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.interact-btn.attack {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: #fff;
+}
+
+.interact-btn.skill {
+  background: linear-gradient(135deg, #6c5ce7, #5849b5);
+  color: #fff;
+}
+
+.interact-btn.defend {
+  background: linear-gradient(135deg, #00b894, #008f72);
+  color: #fff;
+}
+
+.interact-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.interact-btn:active {
+  transform: scale(0.95);
+}
+
+/* 互动反馈消息 */
+.adventure-interact-msg {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(108, 92, 231, 0.1);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-primary);
+  font-weight: 500;
+  animation: msg-slide-in 0.3s ease;
+}
+
+@keyframes msg-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Boss 已击败提示 */
+.adventure-boss-defeated {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 184, 148, 0.1);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: #00b894;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* 条件区域 */
 .adventure-condition {
   background: rgba(108, 92, 231, 0.08);
