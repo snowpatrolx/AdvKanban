@@ -1,4 +1,6 @@
-import type { Task, Category } from '../types';
+import type { Task, Category, RepeatType } from '../types';
+import { getTodayStr, daysBetween } from './id';
+import { isWorkday, CN_HOLIDAYS } from '../data/holidays';
 
 export function priorityColor(priority: Task['priority']): string {
   switch (priority) {
@@ -90,84 +92,117 @@ export function isTaskToday(task: Task): boolean {
 }
 
 /**
- * 计算重复任务距离下次执行还有几天
+ * 解析 YYYY-MM-DD 为本地时间日期对象（避免时区偏移）
+ */
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.substring(0, 10).split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+/** 将日期对象格式化为 YYYY-MM-DD（本地时间） */
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * 计算重复任务的下一次日期（严格晚于当前 dueDate）
+ * 用于完成任务时，为新的重复任务设定对应的日期
+ */
+export function advanceOccurrence(
+  dueDate: string,
+  repeat: RepeatType,
+  repeatWeekdays?: number[],
+): string {
+  const base = parseLocalDate(dueDate);
+
+  switch (repeat) {
+    case 'daily': {
+      base.setDate(base.getDate() + 1);
+      return formatLocalDate(base);
+    }
+    case 'weekly': {
+      base.setDate(base.getDate() + 7);
+      return formatLocalDate(base);
+    }
+    case 'biweekly': {
+      base.setDate(base.getDate() + 14);
+      return formatLocalDate(base);
+    }
+    case 'monthly': {
+      base.setMonth(base.getMonth() + 1);
+      return formatLocalDate(base);
+    }
+    case 'weekdays': {
+      if (!repeatWeekdays || repeatWeekdays.length === 0) return dueDate;
+      for (let i = 1; i <= 14; i++) {
+        const next = new Date(base);
+        next.setDate(base.getDate() + i);
+        if (repeatWeekdays.includes(next.getDay())) return formatLocalDate(next);
+      }
+      return dueDate;
+    }
+    case 'workdays': {
+      for (let i = 1; i <= 15; i++) {
+        const next = new Date(base);
+        next.setDate(base.getDate() + i);
+        if (isWorkday(formatLocalDate(next))) return formatLocalDate(next);
+      }
+      return dueDate;
+    }
+    case 'holidays': {
+      const sorted = CN_HOLIDAYS.map(h => h.date).sort();
+      const next = sorted.find(d => d > dueDate.substring(0, 10));
+      return next || sorted[0];
+    }
+    default:
+      return dueDate;
+  }
+}
+
+/**
+ * 计算重复任务在指定日期（含）之后的第一次执行日期
+ * 用于展示距离下次执行还差几天
+ */
+export function nextOccurrenceOnOrAfter(
+  dueDate: string | null,
+  repeat: RepeatType,
+  repeatWeekdays: number[] | undefined,
+  fromStr: string,
+): string | null {
+  if (repeat === 'none') return dueDate;
+  if (!dueDate) return null;
+
+  let cur = dueDate.substring(0, 10);
+  let guard = 0;
+  while (cur < fromStr && guard < 400) {
+    const next = advanceOccurrence(cur, repeat, repeatWeekdays);
+    if (next === cur) break; // 防止死循环
+    cur = next;
+    guard++;
+  }
+  return cur;
+}
+
+/**
+ * 计算任务距离下次执行还有几天
  * @returns 负数表示已过期，0表示今天，正数表示未来天数
  */
 export function getDaysUntilDue(task: Task): number | null {
   if (task.status === 'done') return null;
   if (!task.dueDate) return null;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(task.dueDate);
-  due.setHours(0, 0, 0, 0);
-  const diff = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const todayStr = getTodayStr();
+  let target = task.dueDate.substring(0, 10);
 
-  // 非重复任务直接返回差值
-  if (task.repeat === 'none') return diff;
-
-  // 重复任务：如果已过期，计算下一个周期
-  if (diff < 0) {
-    return getNextRepeatDays(task);
+  // 重复任务：滚动到下一次实际执行日期后再计算
+  if (task.repeat !== 'none') {
+    target = nextOccurrenceOnOrAfter(target, task.repeat, task.repeatWeekdays, todayStr) || target;
   }
 
-  return diff;
-}
-
-/**
- * 计算重复任务距离下次执行的天数（当当前截止日期已过期时）
- */
-function getNextRepeatDays(task: Task): number | null {
-  if (!task.dueDate) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  switch (task.repeat) {
-    case 'daily':
-      return 0; // 每天重复，今天就是下一次
-    case 'weekly':
-      return 7; // 每周重复，下次是7天后
-    case 'biweekly':
-      return 14; // 每两周重复
-    case 'monthly': {
-      // 找下个月的同一天
-      const next = new Date(today);
-      next.setMonth(next.getMonth() + 1);
-      const nextDue = new Date(task.dueDate);
-      nextDue.setFullYear(next.getFullYear(), next.getMonth(), nextDue.getDate());
-      return Math.round((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    }
-    case 'weekdays': {
-      // 找下一个选中的星期几
-      if (!task.repeatWeekdays || task.repeatWeekdays.length === 0) return null;
-      for (let i = 0; i <= 7; i++) {
-        const d = new Date(today);
-        d.setDate(d.getDate() + i);
-        if (task.repeatWeekdays.includes(d.getDay())) {
-          return i;
-        }
-      }
-      return null;
-    }
-    case 'workdays': {
-      // 法定工作日：找下一个工作日
-      for (let i = 0; i <= 15; i++) {
-        const d = new Date(today);
-        d.setDate(d.getDate() + i);
-        const dateStr = d.toISOString().substring(0, 10);
-        // 引用 isWorkday 需要循环依赖，简化处理：周一到周五
-        const day = d.getDay();
-        if (day >= 1 && day <= 5) return i;
-      }
-      return null;
-    }
-    case 'holidays': {
-      // 法定节假日：简化为返回30（不确定具体天数）
-      return null;
-    }
-    default:
-      return null;
-  }
+  return daysBetween(todayStr, target);
 }
 
 /**

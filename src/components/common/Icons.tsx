@@ -519,6 +519,17 @@ export function IconClipboard({ size = 20, color = 'currentColor', className }: 
   );
 }
 
+// Note / sticky note icon
+export function IconNote({ size = 20, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <path d="M20 4H4a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h10l7-7V5a1 1 0 0 0-1-1z" />
+      <path d="M14 20v-6h6" />
+      <path d="M7 9h7M7 13h4" />
+    </svg>
+  );
+}
+
 // Zoom in icon
 export function IconZoomIn({ size = 20, color = 'currentColor', className }: IconProps) {
   return (

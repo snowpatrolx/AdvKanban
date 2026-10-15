@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
-  Task, Category, Knowledge, UserProfile, StoryProgress, StoryLog, DailyRecord,
+  Task, Category, Knowledge, Note, UserProfile, StoryProgress, StoryLog, DailyRecord,
   TaskStatus, TaskPriority, RepeatType, LogType,
 } from '../types';
 import { generateId, getTodayStr } from '../utils/id';
@@ -9,14 +9,15 @@ import {
   calculateTaskPoints, getLevelByPoints, updateStreak, checkAllBadges,
   checkChapterCondition, calculateBossDamage, updateDailyRecord,
 } from '../utils/gamification';
+import { advanceOccurrence, nextOccurrenceOnOrAfter } from '../utils/taskHelpers';
 import { CHAPTERS } from '../data/chapters';
 import { BADGES } from '../data/badges';
-import { isHoliday, isWorkday, CN_HOLIDAYS } from '../data/holidays';
 
 interface StoreState {
   tasks: Task[];
   categories: Category[];
   knowledge: Knowledge[];
+  notes: Note[];
   userProfile: UserProfile;
   userBadges: string[];
   dailyRecords: DailyRecord[];
@@ -50,10 +51,19 @@ interface StoreState {
   updateKnowledge: (id: string, data: Partial<Knowledge>) => void;
   deleteKnowledge: (id: string) => void;
 
+  // 便签操作
+  addNote: (content: string, color?: string) => string;
+  updateNote: (id: string, data: Partial<Note>) => void;
+  deleteNote: (id: string) => void;
+  noteToTask: (id: string) => string | null;
+
   // 数据管理
   exportJSON: () => string;
   importJSON: (json: string) => boolean;
   resetAll: () => void;
+
+  // 同步重复任务日期（把已过期但未完成的重复任务滚动到下一次执行日期）
+  syncRepeatDates: () => void;
 
   // 互动
   adventureInteract: (chapterId: number, action: string) => { bossDamage: number; message: string; bossDefeated: boolean };
@@ -63,7 +73,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.12';
+export const APP_VERSION = '1.13';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -157,70 +167,16 @@ function createLog(chapterId: number, text: string, type: LogType): StoryLog {
   };
 }
 
-// 计算重复任务的下一个截止日期
+// 计算重复任务的下一个截止日期（为新创建的重复任务设定对应日期）
 function getNextDueDate(
   dueDate: string | null,
   repeat: RepeatType,
   repeatWeekdays?: number[],
 ): string | null {
-  if (!dueDate || repeat === 'none') return dueDate;
-
-  switch (repeat) {
-    case 'daily': {
-      const d = new Date(dueDate);
-      d.setDate(d.getDate() + 1);
-      return d.toISOString().substring(0, 10);
-    }
-    case 'weekly': {
-      const d = new Date(dueDate);
-      d.setDate(d.getDate() + 7);
-      return d.toISOString().substring(0, 10);
-    }
-    case 'biweekly': {
-      const d = new Date(dueDate);
-      d.setDate(d.getDate() + 14);
-      return d.toISOString().substring(0, 10);
-    }
-    case 'monthly': {
-      const d = new Date(dueDate);
-      d.setMonth(d.getMonth() + 1);
-      return d.toISOString().substring(0, 10);
-    }
-    case 'weekdays': {
-      // 找下一个选中的星期几
-      if (!repeatWeekdays || repeatWeekdays.length === 0) return dueDate;
-      const base = new Date(dueDate);
-      for (let i = 1; i <= 14; i++) {
-        const next = new Date(base);
-        next.setDate(base.getDate() + i);
-        if (repeatWeekdays.includes(next.getDay())) {
-          return next.toISOString().substring(0, 10);
-        }
-      }
-      return dueDate;
-    }
-    case 'workdays': {
-      // 法定工作日：找下一个工作日（周一到周五且非节假日，或调休工作日）
-      const base = new Date(dueDate);
-      for (let i = 1; i <= 15; i++) {
-        const next = new Date(base);
-        next.setDate(base.getDate() + i);
-        const dateStr = next.toISOString().substring(0, 10);
-        if (isWorkday(dateStr)) {
-          return dateStr;
-        }
-      }
-      return dueDate;
-    }
-    case 'holidays': {
-      // 法定节假日：找下一个节假日
-      const sorted = CN_HOLIDAYS.map(h => h.date).sort();
-      const next = sorted.find(d => d > dueDate);
-      return next || sorted[0];
-    }
-    default:
-      return dueDate;
-  }
+  if (repeat === 'none') return dueDate;
+  // 没有日期时，以今天为基准计算，保证新的重复任务始终有明确的日期
+  const base = dueDate ? dueDate.substring(0, 10) : getTodayStr();
+  return advanceOccurrence(base, repeat, repeatWeekdays);
 }
 
 export const useStore = create<StoreState>()(
@@ -229,6 +185,7 @@ export const useStore = create<StoreState>()(
       tasks: [],
       categories: defaultCategories,
       knowledge: seedKnowledge,
+      notes: [],
       userProfile: defaultUserProfile,
       userBadges: [],
       dailyRecords: [],
@@ -736,6 +693,66 @@ export const useStore = create<StoreState>()(
         set(state => ({ knowledge: state.knowledge.filter(k => k.id !== id) }));
       },
 
+      // ===== 便签操作 =====
+      addNote: (content, color) => {
+        const id = generateId();
+        const now = new Date().toISOString();
+        const note: Note = {
+          id,
+          content: content.trim(),
+          color: color || '#ffd93d',
+          createdAt: now,
+          updatedAt: now,
+        };
+        set(state => ({ notes: [note, ...state.notes] }));
+        return id;
+      },
+
+      updateNote: (id, data) => {
+        set(state => ({
+          notes: state.notes.map(n =>
+            n.id === id ? { ...n, ...data, updatedAt: new Date().toISOString() } : n
+          ),
+        }));
+      },
+
+      deleteNote: (id) => {
+        set(state => ({ notes: state.notes.filter(n => n.id !== id) }));
+      },
+
+      // 便签转换为任务
+      noteToTask: (id) => {
+        const note = get().notes.find(n => n.id === id);
+        if (!note || !note.content.trim()) return null;
+
+        const lines = note.content.split('\n').map(l => l.trim()).filter(Boolean);
+        const title = lines[0] || note.content.trim();
+        const description = lines.slice(1).join('\n');
+
+        const taskId = get().addTask({
+          title,
+          description,
+          status: 'todo',
+        });
+
+        set(state => ({ notes: state.notes.filter(n => n.id !== id) }));
+        return taskId;
+      },
+
+      // 把已过期但未完成的重复任务滚动到下一次执行日期
+      syncRepeatDates: () => {
+        const todayStr = getTodayStr();
+        set(state => ({
+          tasks: state.tasks.map(t => {
+            if (t.repeat === 'none' || t.status === 'done' || t.archived || t.parentId) return t;
+            if (!t.dueDate) return t;
+            const next = nextOccurrenceOnOrAfter(t.dueDate, t.repeat, t.repeatWeekdays, todayStr);
+            if (!next || next === t.dueDate.substring(0, 10)) return t;
+            return { ...t, dueDate: next };
+          }),
+        }));
+      },
+
       // ===== 数据管理 =====
       exportJSON: () => {
         const state = get();
@@ -743,6 +760,7 @@ export const useStore = create<StoreState>()(
           tasks: state.tasks,
           categories: state.categories,
           knowledge: state.knowledge,
+          notes: state.notes,
           userProfile: state.userProfile,
           userBadges: state.userBadges,
           dailyRecords: state.dailyRecords,
@@ -761,6 +779,7 @@ export const useStore = create<StoreState>()(
             tasks: data.tasks || [],
             categories: data.categories || defaultCategories,
             knowledge: data.knowledge || [],
+            notes: data.notes || [],
             userProfile: data.userProfile || defaultUserProfile,
             userBadges: data.userBadges || [],
             dailyRecords: data.dailyRecords || [],
@@ -778,6 +797,7 @@ export const useStore = create<StoreState>()(
           tasks: [],
           categories: defaultCategories,
           knowledge: seedKnowledge,
+          notes: [],
           userProfile: defaultUserProfile,
           userBadges: [],
           dailyRecords: [],
@@ -894,7 +914,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'quest-planner-storage',
-      version: 5,
+      version: 6,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
@@ -964,6 +984,13 @@ export const useStore = create<StoreState>()(
           }
         }
 
+        // v5 -> v6: 新增便签数据
+        if (version < 6) {
+          if (!state.notes) {
+            state.notes = [];
+          }
+        }
+
         return state;
       },
       onRehydrateStorage: () => (state) => {
@@ -984,6 +1011,16 @@ export const useStore = create<StoreState>()(
               archivedIds.has(t.id) ? { ...t, archived: true } : t
             );
           }
+
+          // 同步重复任务日期：已过期但未完成的重复任务滚动到下一次执行日期
+          const todayStr = getTodayStr();
+          state.tasks = state.tasks.map(t => {
+            if (t.repeat === 'none' || t.status === 'done' || t.archived || t.parentId) return t;
+            if (!t.dueDate) return t;
+            const next = nextOccurrenceOnOrAfter(t.dueDate, t.repeat, t.repeatWeekdays, todayStr);
+            if (!next || next === t.dueDate.substring(0, 10)) return t;
+            return { ...t, dueDate: next };
+          });
         }
       },
     }

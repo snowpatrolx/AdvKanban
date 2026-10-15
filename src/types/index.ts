@@ -91,6 +91,15 @@ export interface StoryLog {
   createdAt: string;
 }
 
+// ===== 便签 =====
+export interface Note {
+  id: string;
+  content: string;
+  color: string;        // 便签颜色
+  createdAt: string;    // ISO datetime
+  updatedAt: string;    // ISO datetime
+}
+
 // ===== 每日记录 =====
 export interface DailyRecord {
   date: string;        // YYYY-MM-DD
@@ -103,6 +112,7 @@ export interface AppData {
   tasks: Task[];
   categories: Category[];
   knowledge: Knowledge[];
+  notes: Note[];
   userProfile: UserProfile;
   userBadges: string[];        // 已获得徽章 id
   dailyRecords: DailyRecord[];

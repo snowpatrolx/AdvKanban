@@ -1,0 +1,135 @@
+.notes-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 快速添加 */
+.notes-add {
+  background: var(--color-bg);
+  border-radius: var(--radius-md, 12px);
+  padding: 12px;
+}
+
+.notes-textarea {
+  width: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  font-family: inherit;
+}
+
+.notes-textarea::placeholder {
+  color: var(--color-text-light);
+}
+
+.notes-add-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.notes-color-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.notes-color-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.notes-color-dot.active {
+  border-color: var(--color-text-primary);
+  transform: scale(1.15);
+}
+
+/* 便签列表 */
+.notes-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.notes-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--color-text-light);
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+.sticky-note {
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 90px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  transform: rotate(-0.6deg);
+  transition: transform 0.2s;
+}
+
+.sticky-note:nth-child(even) {
+  transform: rotate(0.8deg);
+}
+
+.sticky-note-content {
+  color: #4a3f2a;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  flex: 1;
+}
+
+.sticky-note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.sticky-note-time {
+  font-size: 11px;
+  color: rgba(74, 63, 42, 0.6);
+  white-space: nowrap;
+}
+
+.sticky-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sticky-note-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a4a1a;
+  transition: background 0.2s;
+}
+
+.sticky-note-btn.convert:active,
+.sticky-note-btn.delete:active {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.sticky-note-btn.delete {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+}
