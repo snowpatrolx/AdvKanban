@@ -1,5 +1,5 @@
 // ===== 任务相关类型 =====
-export type TaskStatus = 'todo' | 'doing' | 'done';
+export type TaskStatus = 'todo' | 'doing' | 'done' | 'daily';
 export type TaskPriority = 'high' | 'medium' | 'low' | null;
 export type RepeatType = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'weekdays' | 'workdays' | 'holidays';
 
@@ -52,6 +52,7 @@ export interface UserProfile {
   currentStreak: number;
   longestStreak: number;
   lastCompletedDate: string | null;  // YYYY-MM-DD
+  coins: number;                    // 金币（用于冒险章节互动选项）
 }
 
 // ===== 徽章 =====
@@ -61,6 +62,15 @@ export interface Badge {
   description: string;
   icon: string;
   condition: string;  // 用于判定逻辑的 key
+}
+
+// ===== 冒险章节互动选项 =====
+export interface ChapterOption {
+  id: string;
+  label: string;       // 选项名称
+  cost: number;        // 消耗金币
+  damage: number;      // 对 Boss 造成的伤害
+  description: string; // 选项描述
 }
 
 // ===== 冒险章节 =====
@@ -74,6 +84,7 @@ export interface StoryChapter {
   bossHP: number;
   storyText: string;       // 章节剧情文本
   bossDefeatedText: string;
+  options?: ChapterOption[];  // 章节互动选项（消耗金币对 Boss 造成伤害）
 }
 
 export interface StoryProgress {

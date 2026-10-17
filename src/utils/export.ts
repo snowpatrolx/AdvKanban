@@ -104,7 +104,7 @@ export function exportWeeklyReport(
   // 生成文本
   let report = '';
   report += '========================================\n';
-  report += '       冒险清单 - 近一周任务报告\n';
+  report += '       轮盘清单 - 近一周任务报告\n';
   report += '========================================\n\n';
   report += `生成时间：${now.toLocaleString('zh-CN')}\n`;
   report += `报告区间：${weekAgoStr} ~ ${todayStr}\n\n`;
@@ -188,7 +188,7 @@ export function exportWeeklyReport(
   }
 
   report += '========================================\n';
-  report += '       由冒险清单自动生成\n';
+  report += '       由轮盘清单自动生成\n';
   report += '========================================\n';
 
   downloadText(report, `周报_${todayStr}.txt`);

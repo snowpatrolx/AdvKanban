@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { CHAPTERS } from '../data/chapters';
-import { IconCheck, IconPin, IconLock, IconMap, IconSword, IconBook } from '../components/common/Icons';
+import { IconCheck, IconPin, IconLock, IconMap, IconSword, IconBook, IconCoins } from '../components/common/Icons';
 import type { LogType } from '../types';
 import './AdventurePage.css';
 
@@ -13,7 +13,7 @@ const LOG_TYPE_LABELS: Record<LogType, string> = {
 };
 
 export default function AdventurePage() {
-  const { storyProgress, storyLogs, userProfile, knowledge, adventureInteract } = useStore();
+  const { storyProgress, storyLogs, userProfile, knowledge, adventureOption } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const [activeTab, setActiveTab] = useState<'map' | 'logs'>('logs');
   const [interactMsg, setInteractMsg] = useState<string | null>(null);
@@ -43,14 +43,14 @@ export default function AdventurePage() {
   // Boss 是否已被击败
   const bossDefeated = currentChapter ? storyProgress.defeatedBosses.includes(currentChapter.id) : false;
 
-  // 互动处理
-  const handleInteract = (action: 'attack' | 'skill' | 'defend') => {
-    if (!currentChapter || bossDefeated) return;
+  // 互动处理：消耗金币选择选项
+  const handleOption = (optionId: string) => {
+    if (!currentChapter || bossDefeated || isAttacking) return;
     setIsAttacking(true);
     setInteractMsg(null);
 
     setTimeout(() => {
-      const result = adventureInteract(currentChapter.id, action);
+      const result = adventureOption(optionId);
       setInteractMsg(result.message);
 
       if (result.bossDamage > 0) {
@@ -61,7 +61,7 @@ export default function AdventurePage() {
       }
 
       setIsAttacking(false);
-      setTimeout(() => setInteractMsg(null), 3000);
+      setTimeout(() => setInteractMsg(null), 3500);
     }, 300);
   };
 
@@ -118,32 +118,41 @@ export default function AdventurePage() {
                   }}
                 />
               </div>
-              <p className="adventure-boss-hint">完成任务或子任务即可对 Boss 造成伤害</p>
+              <p className="adventure-boss-hint">完成任务或子任务即可对 Boss 造成伤害，也可消耗金币选择互动选项</p>
 
-              {/* 互动按钮 */}
-              {!bossDefeated && (
-                <div className="adventure-interact">
-                  <button
-                    className={`interact-btn attack ${isAttacking ? 'disabled' : ''}`}
-                    onClick={() => handleInteract('attack')}
-                    disabled={isAttacking}
-                  >
-                    <IconSword size={16} color="#fff" /> 攻击
-                  </button>
-                  <button
-                    className={`interact-btn skill ${isAttacking ? 'disabled' : ''}`}
-                    onClick={() => handleInteract('skill')}
-                    disabled={isAttacking}
-                  >
-                    <IconSword size={16} color="#fff" /> 技能 (10EXP)
-                  </button>
-                  <button
-                    className={`interact-btn defend ${isAttacking ? 'disabled' : ''}`}
-                    onClick={() => handleInteract('defend')}
-                    disabled={isAttacking}
-                  >
-                    <IconSword size={16} color="#fff" /> 防御
-                  </button>
+              {/* 金币余额 */}
+              <div className="adventure-coins-bar">
+                <IconCoins size={16} color="#ffd93d" />
+                <span className="adventure-coins-value">{userProfile.coins}</span>
+                <span className="adventure-coins-label">金币</span>
+              </div>
+
+              {/* 互动选项按钮 */}
+              {!bossDefeated && currentChapter.options && currentChapter.options.length > 0 && (
+                <div className="adventure-options">
+                  {currentChapter.options.map(option => {
+                    const canAfford = userProfile.coins >= option.cost;
+                    const disabled = isAttacking || !canAfford;
+                    return (
+                      <button
+                        key={option.id}
+                        className={`adventure-option-btn ${disabled ? 'disabled' : ''} ${!canAfford ? 'locked' : ''}`}
+                        onClick={() => handleOption(option.id)}
+                        disabled={disabled}
+                      >
+                        <div className="adventure-option-top">
+                          <span className="adventure-option-label">
+                            <IconSword size={14} color="#fff" /> {option.label}
+                          </span>
+                          <span className="adventure-option-damage">{option.damage} 伤害</span>
+                        </div>
+                        <div className="adventure-option-desc">{option.description}</div>
+                        <div className="adventure-option-cost">
+                          <IconCoins size={12} color="#ffd93d" /> {option.cost} 金币
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 

@@ -33,7 +33,7 @@ export default function DataManagePage() {
 
   const handleExportJSON = () => {
     const json = exportJSON();
-    downloadJSON(json, `冒险清单备份_${new Date().toISOString().slice(0, 10)}.json`);
+    downloadJSON(json, `轮盘清单备份_${new Date().toISOString().slice(0, 10)}.json`);
     addToast({ icon: '✓', title: 'JSON 备份已下载' });
   };
 

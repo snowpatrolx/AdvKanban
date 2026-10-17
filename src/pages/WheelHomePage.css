@@ -1,0 +1,86 @@
+.wheel-home-page {
+  padding-top: 12px;
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 80px);
+}
+
+/* 顶部栏：金币 / 连续天数 / 看板入口 */
+.wh-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.wh-stat-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-card);
+  border-radius: var(--radius-full, 999px);
+  padding: 7px 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.wh-stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.wh-stat-label {
+  font-size: 12px;
+  color: var(--color-text-light);
+}
+
+.wh-kanban-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-full, 999px);
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 区块 */
+.wh-section {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.wh-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.wh-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.wh-section-count {
+  font-size: 12px;
+  color: var(--color-text-light);
+  background: var(--color-bg-secondary, rgba(108, 92, 231, 0.12));
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+.wh-empty {
+  padding: 16px 0 4px;
+  text-align: center;
+  color: var(--color-text-light);
+  font-size: 13px;
+}

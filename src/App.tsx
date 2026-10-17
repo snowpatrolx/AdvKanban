@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import BottomNav from './components/layout/BottomNav';
 import ToastContainer from './components/common/ToastContainer';
+import WheelHomePage from './pages/WheelHomePage';
 import HomeKanbanPage from './pages/HomeKanbanPage';
 import ProfilePage from './pages/ProfilePage';
 import AdventurePage from './pages/AdventurePage';
@@ -21,13 +22,14 @@ function ScrollToTop() {
 
 function Layout() {
   const { pathname } = useLocation();
-  const showNav = ['/', '/stats', '/adventure', '/ai', '/profile'].includes(pathname);
+  const showNav = ['/', '/kanban', '/stats', '/adventure', '/ai', '/profile'].includes(pathname);
 
   return (
     <>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<HomeKanbanPage />} />
+        <Route path="/" element={<WheelHomePage />} />
+        <Route path="/kanban" element={<HomeKanbanPage />} />
         <Route path="/adventure" element={<AdventurePage />} />
         <Route path="/ai" element={<AIAnalysisPage />} />
         <Route path="/stats" element={<DailyStatsPage />} />

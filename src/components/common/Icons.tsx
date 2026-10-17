@@ -530,6 +530,17 @@ export function IconNote({ size = 20, color = 'currentColor', className }: IconP
   );
 }
 
+// Coins icon (金币)
+export function IconCoins({ size = 20, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M15.5 5.5a6 6 0 0 1 0 9" />
+      <path d="M8 5v6M5.5 6.5h5" />
+    </svg>
+  );
+}
+
 // Zoom in icon
 export function IconZoomIn({ size = 20, color = 'currentColor', className }: IconProps) {
   return (

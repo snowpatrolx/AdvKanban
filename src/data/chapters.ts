@@ -22,6 +22,11 @@ export const CHAPTERS: StoryChapter[] = [
     bossHP: 50,
     storyText: '穿过村庄外的草地，你来到了翠绿森林。古老的树木遮天蔽日，一个低沉的声音在林间回荡："闯入者……可恶的人类……"森林木灵挡住了你的去路。',
     bossDefeatedText: '木灵化为点点绿光消散，森林恢复了宁静。一条小路通向远方的沼泽。',
+    options: [
+      { id: 'slash', label: '挥剑斩击', cost: 5, damage: 15, description: '普通一击，稳定输出' },
+      { id: 'fire', label: '点燃火把', cost: 10, damage: 25, description: '木灵怕火，造成大量伤害' },
+      { id: 'wind', label: '风之律动', cost: 15, damage: 35, description: '借森林之风发起猛攻' },
+    ],
   },
   {
     id: 3,
@@ -33,6 +38,11 @@ export const CHAPTERS: StoryChapter[] = [
     bossHP: 100,
     storyText: '迷雾沼泽弥漫着腐朽的气息，脚下的泥泞让你步履维艰。远处传来诡异的笑声，沼泽巫女从浓雾中现身："又来了一个送死的冒险者……"',
     bossDefeatedText: '巫女的诅咒被打破，沼泽中的迷雾渐渐消散。远处隐约可见古代遗迹的轮廓。',
+    options: [
+      { id: 'dagger', label: '淬毒匕首', cost: 10, damage: 30, description: '以毒攻毒，克制巫女' },
+      { id: 'light', label: '净化之光', cost: 18, damage: 50, description: '驱散黑暗，灼伤巫女' },
+      { id: 'thorn', label: '荆棘缠绕', cost: 25, damage: 70, description: '召唤荆棘束缚并撕裂敌人' },
+    ],
   },
   {
     id: 4,
@@ -44,6 +54,11 @@ export const CHAPTERS: StoryChapter[] = [
     bossHP: 150,
     storyText: '巨大的石柱矗立在遗迹之中，墙壁上刻满了古老的符文。当你试图解读它们时，地面开始震动——遗迹守卫苏醒了，它庞大的石质身躯挡在了前方。',
     bossDefeatedText: '守卫轰然倒塌，扬起漫天尘土。遗迹深处的一道门缓缓打开，通向龙之巢穴。',
+    options: [
+      { id: 'rune', label: '符文破解', cost: 15, damage: 45, description: '解读符文，削弱守卫' },
+      { id: 'hammer', label: '巨锤重击', cost: 22, damage: 65, description: '以蛮力击碎石质身躯' },
+      { id: 'collapse', label: '遗迹崩塌', cost: 35, damage: 95, description: '触发机关，让遗迹自身压垮守卫' },
+    ],
   },
   {
     id: 5,
@@ -55,6 +70,12 @@ export const CHAPTERS: StoryChapter[] = [
     bossHP: 500,
     storyText: '龙之巢穴炽热无比，岩浆在地表流淌。一头巨大的黑色巨龙盘踞在洞穴深处——拖延之龙，混沌的根源。它睁开猩红的眼睛："你终于来了，秩序守护者。但你会像其他人一样，倒在我的脚下……"',
     bossDefeatedText: '随着最后一击，拖延之龙发出震耳欲聋的咆哮，化为灰烬消散。阳光重新照耀大陆，混沌终结，秩序恢复。你，就是传说中的英雄！',
+    options: [
+      { id: 'arrow', label: '屠龙箭雨', cost: 25, damage: 90, description: '漫天箭雨射向巨龙' },
+      { id: 'frost', label: '冰霜吐息', cost: 35, damage: 140, description: '以极寒冰封龙焰' },
+      { id: 'thunder', label: '雷霆审判', cost: 50, damage: 220, description: '召唤天雷轰击巨龙' },
+      { id: 'ultimate', label: '秩序之刃', cost: 80, damage: 350, description: '汇聚秩序之力的终极一击' },
+    ],
   },
   {
     id: 6,
@@ -66,6 +87,12 @@ export const CHAPTERS: StoryChapter[] = [
     bossHP: 800,
     storyText: '大陆重归平静后，天空中出现了一座漂浮的城市。一道光柱从天而降，指引你前往新的领域。在云端之上，云之守护者正在等待新的挑战者。',
     bossDefeatedText: '云之守护者微微颔首："你已证明了自己的实力。更遥远的星辰大海在等着你。"天空之城的大门缓缓开启。',
+    options: [
+      { id: 'gale', label: '烈风斩', cost: 30, damage: 130, description: '借云端烈风斩击守护者' },
+      { id: 'holy', label: '圣光裁决', cost: 45, damage: 200, description: '降下圣光审判敌人' },
+      { id: 'starfall', label: '流星坠落', cost: 60, damage: 290, description: '引导流星轰击天空之城' },
+      { id: 'divine', label: '神圣审判', cost: 100, damage: 450, description: '降下神圣之力终结守护者' },
+    ],
   },
   {
     id: 7,
@@ -77,6 +104,12 @@ export const CHAPTERS: StoryChapter[] = [
     bossHP: 1200,
     storyText: '穿过云端，你来到了星之海岸。海面倒映着漫天繁星，一条巨大的海蛇从水中跃起——深海利维坦，守护着通往星辰的秘密。',
     bossDefeatedText: '利维坦沉入深海，海面恢复平静。海面上浮现出一条星光铺就的道路，通向宇宙的尽头。',
+    options: [
+      { id: 'wave', label: '浪潮之刃', cost: 40, damage: 180, description: '操控巨浪切割利维坦' },
+      { id: 'void', label: '虚空之矛', cost: 55, damage: 280, description: '凝聚虚空之力的长矛' },
+      { id: 'nova', label: '超新星爆发', cost: 80, damage: 420, description: '引爆星辰之力' },
+      { id: 'cosmos', label: '宇宙坍缩', cost: 130, damage: 650, description: '以宇宙之力碾压海蛇' },
+    ],
   },
   {
     id: 8,
@@ -88,6 +121,12 @@ export const CHAPTERS: StoryChapter[] = [
     bossHP: 1500,
     storyText: '沿着星光之路前行，你来到了时光圣殿。过去与未来在这里交织，时间守望者立于沙漏之旁："凡人，你可知晓时间的重量？"',
     bossDefeatedText: '时间守望者停下了沙漏："你已超越时间的束缚。去吧，去书写属于你自己的永恒。"圣殿深处，一颗永恒之心正在闪耀。',
+    options: [
+      { id: 'rewind', label: '时间回溯', cost: 50, damage: 230, description: '回溯时间，削弱守望者' },
+      { id: 'accel', label: '时间加速', cost: 70, damage: 360, description: '加速时间风化守望者' },
+      { id: 'paradox', label: '时空悖论', cost: 100, damage: 540, description: '制造悖论撕裂守望者' },
+      { id: 'eternity', label: '永恒冻结', cost: 160, damage: 850, description: '冻结时间，终结守望者' },
+    ],
   },
   {
     id: 9,
@@ -99,5 +138,11 @@ export const CHAPTERS: StoryChapter[] = [
     bossHP: 2500,
     storyText: '你终于来到了创世神殿。混沌之主端坐于虚空王座之上，它是一切混乱的源头，也是你命运的终点。"有趣……真有趣。那就让我看看，你能做到什么程度吧！"',
     bossDefeatedText: '混沌之主化为万千光点，融入了宇宙之中。秩序与混沌重新达到了平衡。而你，已不再只是一个冒险者——你成为了新世界的缔造者。新的冒险，才刚刚开始……',
+    options: [
+      { id: 'order', label: '秩序之力', cost: 70, damage: 350, description: '以秩序之力对抗混沌' },
+      { id: 'balance', label: '阴阳调和', cost: 100, damage: 560, description: '调和阴阳，压制混沌' },
+      { id: 'creation', label: '创世之光', cost: 150, damage: 850, description: '绽放创世的光辉' },
+      { id: 'infinity', label: '无限裁决', cost: 220, damage: 1300, description: '释放无限之力，终结混沌之主' },
+    ],
   },
 ];

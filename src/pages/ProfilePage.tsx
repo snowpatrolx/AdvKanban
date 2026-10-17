@@ -7,7 +7,7 @@ import { CHAPTERS } from '../data/chapters';
 import {
   IconFlame, IconTag, IconDatabase, IconArrowRight, IconTrophy, IconCheck,
   IconSeedling, IconStarBadge, IconGem, IconEdit, IconBooks, IconDragon, IconAI,
-  IconFolder,
+  IconFolder, IconCoins,
 } from '../components/common/Icons';
 import './ProfilePage.css';
 
@@ -69,6 +69,12 @@ export default function ProfilePage() {
 
       {/* 统计 */}
       <div className="profile-stats-grid">
+        <div className="profile-stat-item">
+          <span className="profile-stat-num" style={{ color: '#ffd93d', display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
+            <IconCoins size={18} color="#ffd93d" /> {userProfile.coins}
+          </span>
+          <span className="profile-stat-label">金币</span>
+        </div>
         <div className="profile-stat-item">
           <span className="profile-stat-num">{userProfile.completedTaskCount}</span>
           <span className="profile-stat-label">完成任务</span>
@@ -142,7 +148,7 @@ export default function ProfilePage() {
 
       {/* 版本信息 */}
       <div className="profile-version">
-        <span>冒险清单 AdvKanban</span>
+        <span>轮盘清单 AdvKanban</span>
         <span>v{APP_VERSION}</span>
       </div>
     </div>

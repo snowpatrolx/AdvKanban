@@ -9,7 +9,7 @@ import {
   calculateTaskPoints, getLevelByPoints, updateStreak, checkAllBadges,
   checkChapterCondition, calculateBossDamage, updateDailyRecord,
 } from '../utils/gamification';
-import { advanceOccurrence, nextOccurrenceOnOrAfter } from '../utils/taskHelpers';
+import { advanceOccurrence, nextOccurrenceOnOrAfter, isToday } from '../utils/taskHelpers';
 import { CHAPTERS } from '../data/chapters';
 import { BADGES } from '../data/badges';
 
@@ -28,7 +28,7 @@ interface StoreState {
   addTask: (data: Partial<Task>) => string;
   updateTask: (id: string, data: Partial<Task>) => void;
   deleteTask: (id: string) => void;
-  toggleTaskComplete: (id: string) => { pointsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
+  toggleTaskComplete: (id: string) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
   reorderTasks: (sourceId: string, targetId: string) => void;
   setTaskStatus: (id: string, status: TaskStatus) => void;
   archiveTask: (id: string) => void;
@@ -39,7 +39,7 @@ interface StoreState {
   addSubtask: (parentId: string, title: string) => string;
   updateSubtask: (id: string, data: Partial<Task>) => void;
   deleteSubtask: (id: string) => void;
-  toggleSubtask: (id: string) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
+  toggleSubtask: (id: string) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 
   // 分类操作
   addCategory: (name: string, color: string) => string;
@@ -65,15 +65,18 @@ interface StoreState {
   // 同步重复任务日期（把已过期但未完成的重复任务滚动到下一次执行日期）
   syncRepeatDates: () => void;
 
+  // 金币操作
+  spendCoins: (amount: number) => boolean;
+
   // 互动
-  adventureInteract: (chapterId: number, action: string) => { bossDamage: number; message: string; bossDefeated: boolean };
+  adventureOption: (optionId: string) => { bossDamage: number; message: string; bossDefeated: boolean; cost: number };
 
   // 内部
-  _processTaskCompletion: (task: Task) => { pointsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
-  _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; bossDefeated: boolean; storyUnlocked: number | null };
+  _processTaskCompletion: (task: Task) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
+  _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.13';
+export const APP_VERSION = '1.14';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -147,6 +150,7 @@ const defaultUserProfile: UserProfile = {
   currentStreak: 0,
   longestStreak: 0,
   lastCompletedDate: null,
+  coins: 0,
 };
 
 const defaultStoryProgress: StoryProgress = {
@@ -232,16 +236,16 @@ export const useStore = create<StoreState>()(
 
       toggleTaskComplete: (id) => {
         const task = get().tasks.find(t => t.id === id);
-        if (!task) return { pointsEarned: 0, newBadges: [], bossDefeated: false, storyUnlocked: null };
+        if (!task) return { pointsEarned: 0, coinsEarned: 0, newBadges: [], bossDefeated: false, storyUnlocked: null };
 
-        if (task.status === 'done') {
-          // 取消完成
+        // 已完成的任务（done 或今日已完成的 daily）取消完成
+        if (task.status === 'done' || (task.status === 'daily' && task.completedAt && isToday(task.completedAt))) {
           set(state => ({
             tasks: state.tasks.map(t =>
-              t.id === id ? { ...t, status: 'todo' as TaskStatus, completedAt: null } : t
+              t.id === id ? { ...t, completedAt: null } : t
             ),
           }));
-          return { pointsEarned: 0, newBadges: [], bossDefeated: false, storyUnlocked: null };
+          return { pointsEarned: 0, coinsEarned: 0, newBadges: [], bossDefeated: false, storyUnlocked: null };
         }
 
         return get()._processTaskCompletion(task);
@@ -262,10 +266,12 @@ export const useStore = create<StoreState>()(
         // 更新每日记录
         const newDailyRecords = updateDailyRecord(state.dailyRecords, todayStr, pointsEarned);
 
-        // 更新任务状态
+        // 更新任务状态：daily 任务保留 daily 状态，仅记录完成时间；其余设为 done
+        const completedAt = new Date().toISOString();
+        const newStatus: TaskStatus = task.status === 'daily' ? 'daily' : 'done';
         let updatedTasks = state.tasks.map(t =>
           t.id === task.id
-            ? { ...t, status: 'done' as TaskStatus, completedAt: new Date().toISOString() }
+            ? { ...t, status: newStatus, completedAt }
             : t
         );
 
@@ -285,10 +291,14 @@ export const useStore = create<StoreState>()(
           updatedTasks = [...updatedTasks, newTask];
         }
 
+        // 金币奖励：每完成 1 个主任务获得 5 金币
+        const coinsEarned = 5;
+
         // 更新用户资料
         const newCompletedCount = profile.completedTaskCount + 1;
         const newTotalPoints = profile.totalPoints + pointsEarned;
         const newLevel = getLevelByPoints(newTotalPoints).level;
+        const newCoins = profile.coins + coinsEarned;
 
         // Boss 战逻辑
         let bossDefeated = false;
@@ -400,6 +410,7 @@ export const useStore = create<StoreState>()(
           currentStreak: newStreak,
           longestStreak: newLongestStreak,
           lastCompletedDate: todayStr,
+          coins: newCoins,
         };
 
         const storyComplete = newStoryProgress.defeatedBosses.length === CHAPTERS.filter(c => c.bossName).length
@@ -421,7 +432,7 @@ export const useStore = create<StoreState>()(
           userBadges: [...state.userBadges, ...newBadges],
         });
 
-        return { pointsEarned, newBadges, bossDefeated, storyUnlocked };
+        return { pointsEarned, coinsEarned, newBadges, bossDefeated, storyUnlocked };
       },
 
       reorderTasks: (sourceId, targetId) => {
@@ -523,7 +534,7 @@ export const useStore = create<StoreState>()(
 
       toggleSubtask: (id) => {
         const task = get().tasks.find(t => t.id === id);
-        if (!task || !task.parentId) return { bossDamage: 0, bossDefeated: false, storyUnlocked: null };
+        if (!task || !task.parentId) return { bossDamage: 0, coinsEarned: 0, bossDefeated: false, storyUnlocked: null };
 
         if (task.status === 'done') {
           // 取消完成子任务
@@ -532,7 +543,7 @@ export const useStore = create<StoreState>()(
               t.id === id ? { ...t, status: 'todo' as TaskStatus, completedAt: null } : t
             ),
           }));
-          return { bossDamage: 0, bossDefeated: false, storyUnlocked: null };
+          return { bossDamage: 0, coinsEarned: 0, bossDefeated: false, storyUnlocked: null };
         } else {
           // 完成子任务：更新状态
           set(state => ({
@@ -553,6 +564,7 @@ export const useStore = create<StoreState>()(
             // 合并结果：如果子任务已经击败了 boss，不再重复报告
             return {
               bossDamage: result.bossDamage,
+              coinsEarned: result.coinsEarned + parentResult.coinsEarned,
               bossDefeated: result.bossDefeated || parentResult.bossDefeated,
               storyUnlocked: result.storyUnlocked || parentResult.storyUnlocked,
             };
@@ -565,11 +577,14 @@ export const useStore = create<StoreState>()(
       _processSubtaskCompletion: (subtask) => {
         const state = get();
         const parentTask = state.tasks.find(t => t.id === subtask.parentId);
-        if (!parentTask) return { bossDamage: 0, bossDefeated: false, storyUnlocked: null };
+        if (!parentTask) return { bossDamage: 0, coinsEarned: 0, bossDefeated: false, storyUnlocked: null };
 
         // 子任务伤害 = 父任务基础积分的一半
         const basePoints = parentTask.priority === 'high' ? 10 : 5;
         const bossDamage = basePoints;
+
+        // 子任务金币奖励：每完成 1 个子任务获得 2 金币
+        const coinsEarned = 2;
 
         let bossDefeated = false;
         let storyUnlocked: number | null = null;
@@ -616,12 +631,16 @@ export const useStore = create<StoreState>()(
           }
         }
 
+        // 更新金币
+        const newProfile = { ...state.userProfile, coins: state.userProfile.coins + coinsEarned };
+
         set({
           storyProgress: newStoryProgress,
           storyLogs: newStoryLogs,
+          userProfile: newProfile,
         });
 
-        return { bossDamage, bossDefeated, storyUnlocked };
+        return { bossDamage, coinsEarned, bossDefeated, storyUnlocked };
       },
 
       // ===== 分类操作 =====
@@ -739,11 +758,15 @@ export const useStore = create<StoreState>()(
         return taskId;
       },
 
-      // 把已过期但未完成的重复任务滚动到下一次执行日期
+      // 把已过期但未完成的重复任务滚动到下一次执行日期；重置非今日完成的 daily 任务
       syncRepeatDates: () => {
         const todayStr = getTodayStr();
         set(state => ({
           tasks: state.tasks.map(t => {
+            // daily 任务：若完成时间不是今天，则清除完成时间（重置为待完成）
+            if (t.status === 'daily' && t.completedAt && t.completedAt.substring(0, 10) !== todayStr) {
+              return { ...t, completedAt: null };
+            }
             if (t.repeat === 'none' || t.status === 'done' || t.archived || t.parentId) return t;
             if (!t.dueDate) return t;
             const next = nextOccurrenceOnOrAfter(t.dueDate, t.repeat, t.repeatWeekdays, todayStr);
@@ -806,97 +829,74 @@ export const useStore = create<StoreState>()(
         });
       },
 
-      adventureInteract: (chapterId, action) => {
+      // 消耗金币（用于冒险章节选项）
+      spendCoins: (amount) => {
         const state = get();
-        const chapter = CHAPTERS.find(c => c.id === chapterId);
-        if (!chapter || !chapter.bossName) {
-          return { bossDamage: 0, message: '该章节没有 Boss', bossDefeated: false };
+        if (state.userProfile.coins < amount) return false;
+        set({ userProfile: { ...state.userProfile, coins: state.userProfile.coins - amount } });
+        return true;
+      },
+
+      // 冒险章节互动：消耗金币选择选项，对 Boss 造成伤害
+      adventureOption: (optionId) => {
+        const state = get();
+        const currentChapter = CHAPTERS.find(c => c.id === state.storyProgress.currentChapter);
+        if (!currentChapter || !currentChapter.bossName) {
+          return { bossDamage: 0, message: '当前章节没有 Boss', bossDefeated: false, cost: 0 };
+        }
+        if (state.storyProgress.defeatedBosses.includes(currentChapter.id)) {
+          return { bossDamage: 0, message: `${currentChapter.bossName} 已被击败`, bossDefeated: false, cost: 0 };
         }
 
-        // 检查 Boss 是否已被击败
-        if (state.storyProgress.defeatedBosses.includes(chapterId)) {
-          return { bossDamage: 0, message: `${chapter.bossName} 已被击败`, bossDefeated: false };
+        const option = currentChapter.options?.find(o => o.id === optionId);
+        if (!option) {
+          return { bossDamage: 0, message: '未知选项', bossDefeated: false, cost: 0 };
         }
 
-        // 检查是否是当前章节
-        if (state.storyProgress.currentChapter !== chapterId) {
-          return { bossDamage: 0, message: '该章节尚未解锁', bossDefeated: false };
+        // 检查金币是否足够
+        if (state.userProfile.coins < option.cost) {
+          return { bossDamage: 0, message: `金币不足，需要 ${option.cost} 金币`, bossDefeated: false, cost: option.cost };
         }
 
-        // 根据不同互动类型计算伤害
-        let bossDamage = 0;
-        let message = '';
+        // 扣除金币
+        const newCoins = state.userProfile.coins - option.cost;
 
-        switch (action) {
-          case 'attack': {
-            // 攻击：随机 5-15 点伤害
-            bossDamage = Math.floor(Math.random() * 11) + 5;
-            message = `你对 ${chapter.bossName} 发动攻击，造成 ${bossDamage} 点伤害！`;
-            break;
-          }
-          case 'skill': {
-            // 技能：消耗经验值，造成 20-30 点伤害
-            const cost = 10;
-            if (state.userProfile.totalPoints < cost) {
-              return { bossDamage: 0, message: '经验值不足，需要 10 点经验来释放技能', bossDefeated: false };
-            }
-            bossDamage = Math.floor(Math.random() * 11) + 20;
-            message = `你释放了强力技能，对 ${chapter.bossName} 造成 ${bossDamage} 点伤害！消耗 ${cost} 经验值`;
-
-            // 扣除经验值
-            set(s => ({
-              userProfile: {
-                ...s.userProfile,
-                totalPoints: Math.max(0, s.userProfile.totalPoints - cost),
-              },
-            }));
-            break;
-          }
-          case 'defend': {
-            // 防御：减少下次受击，但可以获得少量反击伤害
-            bossDamage = Math.floor(Math.random() * 6) + 3;
-            message = `你举盾防御并反击，对 ${chapter.bossName} 造成 ${bossDamage} 点伤害！`;
-            break;
-          }
-          default:
-            return { bossDamage: 0, message: '未知操作', bossDefeated: false };
-        }
-
-        // 计算 Boss 剩余 HP
-        const bossMaxHP = chapter.bossHP;
-        const currentHP = state.storyProgress.bossCurrentHP[chapterId] ?? bossMaxHP;
+        // 造成伤害
+        const bossDamage = option.damage;
+        const bossMaxHP = currentChapter.bossHP;
+        const currentHP = state.storyProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
         const newHP = Math.max(0, currentHP - bossDamage);
         const bossDefeated = newHP === 0;
 
-        // 更新状态
+        const message = `你选择了「${option.label}」，消耗 ${option.cost} 金币，对 ${currentChapter.bossName} 造成 ${bossDamage} 点伤害！`;
+
         set(s => {
           const newStoryProgress = { ...s.storyProgress };
           newStoryProgress.bossCurrentHP = {
             ...newStoryProgress.bossCurrentHP,
-            [chapterId]: newHP,
+            [currentChapter.id]: newHP,
           };
 
           const newStoryLogs = [...s.storyLogs];
           newStoryLogs.push({
             id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-            chapterId,
+            chapterId: currentChapter.id,
             type: 'damage' as LogType,
             text: message,
             createdAt: new Date().toISOString(),
           });
 
-          if (bossDefeated && !newStoryProgress.defeatedBosses.includes(chapterId)) {
-            newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, chapterId];
+          if (bossDefeated && !newStoryProgress.defeatedBosses.includes(currentChapter.id)) {
+            newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, currentChapter.id];
             newStoryLogs.push({
               id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-defeat`,
-              chapterId,
+              chapterId: currentChapter.id,
               type: 'story' as LogType,
-              text: `你成功击败了 ${chapter.bossName}！新的冒险篇章即将开启...`,
+              text: `你成功击败了 ${currentChapter.bossName}！${currentChapter.bossDefeatedText}`,
               createdAt: new Date().toISOString(),
             });
 
-            // 解锁下一章
-            const nextChapter = CHAPTERS.find(c => c.id === chapterId + 1);
+            const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
             if (nextChapter && !newStoryProgress.unlockedChapters.includes(nextChapter.id)) {
               newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
               newStoryProgress.currentChapter = nextChapter.id;
@@ -906,15 +906,16 @@ export const useStore = create<StoreState>()(
           return {
             storyProgress: newStoryProgress,
             storyLogs: newStoryLogs,
+            userProfile: { ...s.userProfile, coins: newCoins },
           };
         });
 
-        return { bossDamage, message, bossDefeated };
+        return { bossDamage, message, bossDefeated, cost: option.cost };
       },
     }),
     {
       name: 'quest-planner-storage',
-      version: 6,
+      version: 7,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
@@ -991,6 +992,15 @@ export const useStore = create<StoreState>()(
           }
         }
 
+        // v6 -> v7: 新增金币字段（冒险章节互动选项消耗）
+        if (version < 7) {
+          if (state.userProfile && typeof state.userProfile.coins !== 'number') {
+            state.userProfile = { ...state.userProfile, coins: 0 };
+          } else if (!state.userProfile) {
+            state.userProfile = { ...defaultUserProfile };
+          }
+        }
+
         return state;
       },
       onRehydrateStorage: () => (state) => {
@@ -1015,6 +1025,10 @@ export const useStore = create<StoreState>()(
           // 同步重复任务日期：已过期但未完成的重复任务滚动到下一次执行日期
           const todayStr = getTodayStr();
           state.tasks = state.tasks.map(t => {
+            // daily 任务：若完成时间不是今天，则清除完成时间
+            if (t.status === 'daily' && t.completedAt && t.completedAt.substring(0, 10) !== todayStr) {
+              return { ...t, completedAt: null };
+            }
             if (t.repeat === 'none' || t.status === 'done' || t.archived || t.parentId) return t;
             if (!t.dueDate) return t;
             const next = nextOccurrenceOnOrAfter(t.dueDate, t.repeat, t.repeatWeekdays, todayStr);

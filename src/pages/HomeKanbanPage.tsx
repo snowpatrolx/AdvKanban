@@ -124,9 +124,10 @@ export default function HomeKanbanPage() {
   // 已归档任务总数（不受搜索/分类筛选影响，用于按钮计数）
   const archivedCount = useMemo(() => tasks.filter(t => !t.parentId && t.archived).length, [tasks]);
 
-  // 今日完成的任务数（用于每日任务轮盘，每天自动重置）
+  // 今日完成的任务数（主任务 + 子任务，用于每日任务轮盘，每天自动重置）
   const todayCompletedCount = useMemo(
-    () => tasks.filter(t => !t.parentId && t.status === 'done' && isToday(t.completedAt)).length,
+    () => tasks.filter(t => t.status === 'done' && isToday(t.completedAt)).length
+      + tasks.filter(t => t.status === 'daily' && t.completedAt && isToday(t.completedAt)).length,
     [tasks],
   );
 
@@ -174,7 +175,7 @@ export default function HomeKanbanPage() {
         if (filterCategory !== ANY_CATEGORY_ID && t.categoryId === ANY_CATEGORY_ID) return true;
         return t.categoryId === filterCategory;
       });
-    const map: Record<TaskStatus, Task[]> = { todo: [], doing: [], done: [] };
+    const map: Record<TaskStatus, Task[]> = { todo: [], doing: [], daily: [], done: [] };
     allFiltered.forEach(t => map[t.status].push(t));
     Object.values(map).forEach(arr => {
       arr.sort((a, b) => {
@@ -208,6 +209,9 @@ export default function HomeKanbanPage() {
     if (result.pointsEarned > 0) {
       addToast({ icon: '★', title: `+${result.pointsEarned} 经验值！` });
     }
+    if (result.coinsEarned > 0) {
+      addToast({ icon: '◉', title: `+${result.coinsEarned} 金币` });
+    }
     result.newBadges.forEach(badgeId => {
       const badge = BADGES.find(b => b.id === badgeId);
       if (badge) addToast({ icon: '★', title: `获得徽章：${badge.name}` });
@@ -222,6 +226,9 @@ export default function HomeKanbanPage() {
     const result = toggleSubtask(id);
     if (result.bossDamage > 0) {
       addToast({ icon: '⚔', title: `子任务对 Boss 造成 ${result.bossDamage} 点伤害！` });
+    }
+    if (result.coinsEarned > 0) {
+      addToast({ icon: '◉', title: `+${result.coinsEarned} 金币` });
     }
     if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });
     if (result.storyUnlocked && result.storyUnlocked > 0) {
@@ -548,14 +555,14 @@ export default function HomeKanbanPage() {
           <div className="form-group">
             <label className="form-label">状态</label>
             <div className="quick-status-selector">
-              {(['todo', 'doing', 'done'] as TaskStatus[]).map(s => (
+              {(['todo', 'doing', 'daily', 'done'] as TaskStatus[]).map(s => (
                 <button
                   key={s}
                   type="button"
                   className={`quick-status-btn ${quickStatus === s ? 'active' : ''}`}
                   onClick={() => setQuickStatus(s)}
                 >
-                  {s === 'todo' ? '待办' : s === 'doing' ? '进行中' : '已完成'}
+                  {s === 'todo' ? '待办' : s === 'doing' ? '进行中' : s === 'daily' ? '每日' : '已完成'}
                 </button>
               ))}
             </div>
@@ -614,20 +621,23 @@ function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleS
   const incompleteSubtasks = subtasks.filter(t => t.status !== 'done');
   const firstIncompleteSubtask = incompleteSubtasks[0];
 
+  // 任务是否已完成：done 状态，或 daily 状态且今日已完成
+  const isCompleted = task.status === 'done' || (task.status === 'daily' && !!task.completedAt && isToday(task.completedAt));
+
   return (
     <div className={`task-card ${overdue ? 'overdue' : ''} ${dragging ? 'dragging' : ''}`}>
       <button
         className="task-checkbox"
         onClick={(e) => { e.stopPropagation(); onToggle(task.id); }}
       >
-        {task.status === 'done' ? (
+        {isCompleted ? (
           <IconCheckCircle size={22} color="var(--color-primary)" />
         ) : (
           <span className="checkbox-circle" />
         )}
       </button>
       <div className="task-card-body" onClick={onClick}>
-        <div className={`task-card-title ${task.status === 'done' ? 'done-text' : ''}`}>
+        <div className={`task-card-title ${isCompleted ? 'done-text' : ''}`}>
           {task.title}
           {task.repeat !== 'none' && (
             <span className="task-repeat-badge">

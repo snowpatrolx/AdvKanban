@@ -3,7 +3,7 @@ import { IconTasks, IconChart, IconMap, IconUser } from '../common/Icons';
 import './BottomNav.css';
 
 const tabs = [
-  { path: '/', label: '任务', Icon: IconTasks },
+  { path: '/', label: '首页', Icon: IconTasks },
   { path: '/stats', label: '统计', Icon: IconChart },
   { path: '/adventure', label: '冒险', Icon: IconMap },
   { path: '/profile', label: '我的', Icon: IconUser },

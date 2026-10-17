@@ -195,6 +195,7 @@ export default function TaskDetailPage() {
             <select className="form-select" value={status} onChange={e => setStatus(e.target.value as TaskStatus)}>
               <option value="todo">待办</option>
               <option value="doing">进行中</option>
+              <option value="daily">每日</option>
               <option value="done">已完成</option>
             </select>
           </div>

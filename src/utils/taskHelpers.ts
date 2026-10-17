@@ -24,6 +24,7 @@ export function statusLabel(status: Task['status']): string {
   switch (status) {
     case 'todo': return '待办';
     case 'doing': return '进行中';
+    case 'daily': return '每日';
     case 'done': return '已完成';
   }
 }
@@ -78,6 +79,9 @@ export function isTaskToday(task: Task): boolean {
   if (task.status === 'done') return false;
   if (task.archived) return false;
   if (task.parentId) return false;
+
+  // daily 状态的任务永远是当日任务
+  if (task.status === 'daily') return true;
 
   // 截止日期是今天
   if (isToday(task.dueDate)) return true;
