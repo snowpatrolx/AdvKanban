@@ -176,10 +176,17 @@
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.hk-status-filter::-webkit-scrollbar {
+  display: none;
 }
 
 .status-filter-btn {
-  flex: 1;
+  flex: 1 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;

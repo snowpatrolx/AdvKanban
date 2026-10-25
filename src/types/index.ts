@@ -22,10 +22,18 @@ export interface Task {
   repeatCount: number;          // 重复次数计数，第N次重复
   parentId: string | null;      // 父任务ID（子任务用）
   archived?: boolean;           // 是否已归档
+  tagIds?: string[];            // 关联的标签
 }
 
 // ===== 分类 =====
 export interface Category {
+  id: string;
+  name: string;
+  color: string;
+}
+
+// ===== 任务标签 =====
+export interface Tag {
   id: string;
   name: string;
   color: string;
@@ -122,6 +130,7 @@ export interface DailyRecord {
 export interface AppData {
   tasks: Task[];
   categories: Category[];
+  tags: Tag[];
   knowledge: Knowledge[];
   notes: Note[];
   userProfile: UserProfile;

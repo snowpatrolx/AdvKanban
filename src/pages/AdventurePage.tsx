@@ -12,6 +12,21 @@ const LOG_TYPE_LABELS: Record<LogType, string> = {
   story: '剧情',
 };
 
+// 金币选项的稀有度
+type OptionTier = 'common' | 'rare' | 'epic' | 'legendary';
+
+const OPTION_TIERS: Record<OptionTier, { label: string; particles: number }> = {
+  common: { label: '普通', particles: 6 },
+  rare: { label: '稀有', particles: 9 },
+  epic: { label: '史诗', particles: 13 },
+  legendary: { label: '传说', particles: 18 },
+};
+
+// 选项位置决定稀有度：越靠后越强
+function getOptionTier(index: number): OptionTier {
+  return (['common', 'rare', 'epic', 'legendary'] as OptionTier[])[Math.min(index, 3)];
+}
+
 export default function AdventurePage() {
   const { storyProgress, storyLogs, userProfile, knowledge, adventureOption } = useStore();
   const addToast = useToastStore(s => s.addToast);
@@ -130,16 +145,37 @@ export default function AdventurePage() {
               {/* 互动选项按钮 */}
               {!bossDefeated && currentChapter.options && currentChapter.options.length > 0 && (
                 <div className="adventure-options">
-                  {currentChapter.options.map(option => {
+                  {currentChapter.options.map((option, index) => {
+                    const tier = getOptionTier(index);
+                    const tierInfo = OPTION_TIERS[tier];
                     const canAfford = userProfile.coins >= option.cost;
                     const disabled = isAttacking || !canAfford;
                     return (
                       <button
                         key={option.id}
-                        className={`adventure-option-btn ${disabled ? 'disabled' : ''} ${!canAfford ? 'locked' : ''}`}
+                        className={`adventure-option-btn tier-${tier} ${disabled ? 'disabled' : ''} ${!canAfford ? 'locked' : ''}`}
                         onClick={() => handleOption(option.id)}
                         disabled={disabled}
                       >
+                        {/* 稀有度光效层 */}
+                        <span className="adventure-option-aura" aria-hidden="true" />
+                        {/* 粒子层 */}
+                        {!disabled && (
+                          <span className="adventure-option-particles" aria-hidden="true">
+                            {Array.from({ length: tierInfo.particles }).map((_, i) => (
+                              <span
+                                key={i}
+                                className="adventure-particle"
+                                style={{
+                                  left: `${(i * 37) % 100}%`,
+                                  animationDelay: `${((i * 0.37) % 3).toFixed(2)}s`,
+                                  animationDuration: `${(2.2 + ((i * 0.29) % 1.8)).toFixed(2)}s`,
+                                }}
+                              />
+                            ))}
+                          </span>
+                        )}
+                        <span className="adventure-option-tier-badge">{tierInfo.label}</span>
                         <div className="adventure-option-top">
                           <span className="adventure-option-label">
                             <IconSword size={14} color="#fff" /> {option.label}

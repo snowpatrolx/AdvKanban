@@ -261,10 +261,12 @@
 }
 
 .adventure-option-btn {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 10px;
+  padding-bottom: 22px;
   background: linear-gradient(135deg, #6c5ce7, #5849b5);
   color: #fff;
   border: none;
@@ -272,6 +274,13 @@
   cursor: pointer;
   transition: all 0.2s;
   text-align: left;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.adventure-option-btn > *:not(.adventure-option-aura):not(.adventure-option-particles):not(.adventure-option-tier-badge) {
+  position: relative;
+  z-index: 2;
 }
 
 .adventure-option-btn:active {
@@ -285,6 +294,224 @@
 
 .adventure-option-btn.locked {
   background: linear-gradient(135deg, #636e72, #4a5154);
+  box-shadow: none;
+}
+
+/* 稀有度光效层 */
+.adventure-option-aura {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 粒子层 */
+.adventure-option-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.adventure-particle {
+  position: absolute;
+  bottom: 2px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  opacity: 0;
+  animation-name: adventure-particle-rise;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes adventure-particle-rise {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  15% { opacity: 0.9; }
+  70% { opacity: 0.6; }
+  100% { transform: translateY(-72px) scale(0.3); opacity: 0; }
+}
+
+/* 稀有度徽标 */
+.adventure-option-tier-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  z-index: 3;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* ---------- 普通 ---------- */
+.adventure-option-btn.tier-common {
+  background: linear-gradient(135deg, #6c5ce7, #5849b5);
+  box-shadow: 0 2px 6px rgba(108, 92, 231, 0.25);
+}
+
+.adventure-option-btn.tier-common .adventure-particle {
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.adventure-option-btn.tier-common .adventure-option-tier-badge {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ---------- 稀有 ---------- */
+.adventure-option-btn.tier-rare {
+  background: linear-gradient(135deg, #0984e3, #00b8d4);
+  box-shadow: 0 3px 12px rgba(9, 132, 227, 0.4);
+  animation: tier-rare-breathe 3s ease-in-out infinite;
+}
+
+.adventure-option-btn.tier-rare .adventure-option-aura {
+  background: radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.28), transparent 60%);
+}
+
+.adventure-option-btn.tier-rare .adventure-particle {
+  background: rgba(190, 240, 255, 0.9);
+  box-shadow: 0 0 4px rgba(120, 220, 255, 0.9);
+}
+
+.adventure-option-btn.tier-rare .adventure-option-tier-badge {
+  background: rgba(255, 255, 255, 0.28);
+  color: #eaf9ff;
+}
+
+@keyframes tier-rare-breathe {
+  0%, 100% { box-shadow: 0 3px 12px rgba(9, 132, 227, 0.35); }
+  50% { box-shadow: 0 3px 20px rgba(0, 206, 201, 0.65); }
+}
+
+/* ---------- 史诗 ---------- */
+.adventure-option-btn.tier-epic {
+  background: linear-gradient(135deg, #a55eea, #6c5ce7 55%, #4834d4);
+  box-shadow: 0 4px 18px rgba(165, 94, 234, 0.5);
+  animation: tier-epic-glow 2.6s ease-in-out infinite;
+}
+
+.adventure-option-btn.tier-epic .adventure-option-aura {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.3), transparent 55%),
+    radial-gradient(circle at 85% 90%, rgba(196, 132, 255, 0.5), transparent 60%);
+}
+
+.adventure-option-btn.tier-epic .adventure-particle {
+  width: 3px;
+  height: 3px;
+  background: rgba(224, 190, 255, 0.95);
+  box-shadow: 0 0 6px rgba(186, 104, 255, 0.95);
+}
+
+.adventure-option-btn.tier-epic .adventure-option-tier-badge {
+  background: linear-gradient(135deg, #e5b3ff, #b388ff);
+  color: #3d1d63;
+}
+
+@keyframes tier-epic-glow {
+  0%, 100% {
+    box-shadow: 0 4px 16px rgba(165, 94, 234, 0.45);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 6px 26px rgba(186, 104, 255, 0.85);
+    transform: translateY(-1px);
+  }
+}
+
+/* ---------- 传说 ---------- */
+.adventure-option-btn.tier-legendary {
+  background: linear-gradient(135deg, #f7b733, #fc7b1a 55%, #e84118);
+  box-shadow: 0 4px 22px rgba(252, 123, 26, 0.6);
+  animation: tier-legendary-glow 2.2s ease-in-out infinite;
+}
+
+.adventure-option-btn.tier-legendary::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -70%;
+  width: 45%;
+  height: 220%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: rotate(18deg);
+  animation: tier-legendary-sweep 3.2s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.adventure-option-btn.tier-legendary .adventure-option-aura {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.4), transparent 55%),
+    radial-gradient(circle at 80% 95%, rgba(255, 214, 102, 0.55), transparent 60%);
+}
+
+.adventure-option-btn.tier-legendary .adventure-particle {
+  width: 3px;
+  height: 3px;
+  background: #fff3c4;
+  box-shadow: 0 0 8px rgba(255, 214, 61, 1), 0 0 14px rgba(255, 150, 40, 0.8);
+}
+
+.adventure-option-btn.tier-legendary .adventure-option-tier-badge {
+  background: linear-gradient(135deg, #fff2b0, #ffd93d);
+  color: #7a3b00;
+  box-shadow: 0 0 10px rgba(255, 217, 61, 0.9);
+}
+
+.adventure-option-btn.tier-legendary .adventure-option-label {
+  text-shadow: 0 1px 6px rgba(120, 40, 0, 0.55);
+}
+
+@keyframes tier-legendary-glow {
+  0%, 100% {
+    box-shadow: 0 4px 18px rgba(252, 123, 26, 0.55), 0 0 0 rgba(255, 217, 61, 0);
+  }
+  50% {
+    box-shadow: 0 6px 30px rgba(255, 160, 40, 0.9), 0 0 18px rgba(255, 217, 61, 0.5);
+  }
+}
+
+@keyframes tier-legendary-sweep {
+  0% { left: -70%; }
+  60%, 100% { left: 130%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adventure-option-btn,
+  .adventure-particle,
+  .adventure-option-btn.tier-legendary::after {
+    animation: none !important;
+  }
+}
+
+/* 金币不足时统一置灰，覆盖稀有度配色 */
+.adventure-option-btn.locked.tier-common,
+.adventure-option-btn.locked.tier-rare,
+.adventure-option-btn.locked.tier-epic,
+.adventure-option-btn.locked.tier-legendary {
+  background: linear-gradient(135deg, #636e72, #4a5154);
+  box-shadow: none;
+  animation: none;
+  filter: grayscale(0.4);
+}
+
+.adventure-option-btn.locked.tier-common .adventure-option-tier-badge,
+.adventure-option-btn.locked.tier-rare .adventure-option-tier-badge,
+.adventure-option-btn.locked.tier-epic .adventure-option-tier-badge,
+.adventure-option-btn.locked.tier-legendary .adventure-option-tier-badge {
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.85);
+  box-shadow: none;
 }
 
 .adventure-option-top {

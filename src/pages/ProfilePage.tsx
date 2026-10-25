@@ -132,6 +132,12 @@ export default function ProfilePage() {
           </span>
           <IconArrowRight size={18} color="var(--color-text-light)" />
         </div>
+        <div className="profile-menu-item" onClick={() => navigate('/tags')}>
+          <span className="profile-menu-label">
+            <IconTag size={20} color="var(--color-primary)" /> 标签
+          </span>
+          <IconArrowRight size={18} color="var(--color-text-light)" />
+        </div>
         <div className="profile-menu-item" onClick={() => navigate('/categories')}>
           <span className="profile-menu-label">
             <IconTag size={20} color="var(--color-primary)" /> 分类管理

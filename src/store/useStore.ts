@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
-  Task, Category, Knowledge, Note, UserProfile, StoryProgress, StoryLog, DailyRecord,
+  Task, Category, Tag, Knowledge, Note, UserProfile, StoryProgress, StoryLog, DailyRecord,
   TaskStatus, TaskPriority, RepeatType, LogType,
 } from '../types';
 import { generateId, getTodayStr } from '../utils/id';
@@ -9,13 +9,14 @@ import {
   calculateTaskPoints, getLevelByPoints, updateStreak, checkAllBadges,
   checkChapterCondition, calculateBossDamage, updateDailyRecord,
 } from '../utils/gamification';
-import { advanceOccurrence, nextOccurrenceOnOrAfter, isToday } from '../utils/taskHelpers';
+import { advanceOccurrence, nextOccurrenceOnOrAfter, isToday, toLocalDateStr } from '../utils/taskHelpers';
 import { CHAPTERS } from '../data/chapters';
 import { BADGES } from '../data/badges';
 
 interface StoreState {
   tasks: Task[];
   categories: Category[];
+  tags: Tag[];
   knowledge: Knowledge[];
   notes: Note[];
   userProfile: UserProfile;
@@ -46,6 +47,12 @@ interface StoreState {
   updateCategory: (id: string, data: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
 
+  // 标签操作
+  addTag: (name: string, color: string) => string;
+  updateTag: (id: string, data: Partial<Tag>) => void;
+  deleteTag: (id: string) => void;
+  toggleTaskTag: (taskId: string, tagId: string) => void;
+
   // 知识库操作
   addKnowledge: (data: Partial<Knowledge>) => string;
   updateKnowledge: (id: string, data: Partial<Knowledge>) => void;
@@ -65,6 +72,9 @@ interface StoreState {
   // 同步重复任务日期（把已过期但未完成的重复任务滚动到下一次执行日期）
   syncRepeatDates: () => void;
 
+  // 每日任务每日重置（跨天后清除完成状态）
+  resetDailyTasks: () => void;
+
   // 金币操作
   spendCoins: (amount: number) => boolean;
 
@@ -76,7 +86,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.14';
+export const APP_VERSION = '1.15';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -87,6 +97,13 @@ const defaultCategories: Category[] = [
 
 // any 分类 ID，属于所有分类
 export const ANY_CATEGORY_ID = 'cat-any';
+
+// 默认标签
+const defaultTags: Tag[] = [
+  { id: 'tag-work', name: '工作', color: '#0984e3' },
+  { id: 'tag-study', name: '学习', color: '#6c5ce7' },
+  { id: 'tag-life', name: '生活', color: '#00b894' },
+];
 
 // 旧分类ID到新分类ID的映射
 const categoryIdMap: Record<string, string> = {
@@ -188,6 +205,7 @@ export const useStore = create<StoreState>()(
     (set, get) => ({
       tasks: [],
       categories: defaultCategories,
+      tags: defaultTags,
       knowledge: seedKnowledge,
       notes: [],
       userProfile: defaultUserProfile,
@@ -216,6 +234,7 @@ export const useStore = create<StoreState>()(
           repeatWeekdays: data.repeatWeekdays,
           repeatCount: data.repeatCount ?? 0,
           parentId: data.parentId || null,
+          tagIds: data.tagIds || [],
         };
         set(state => ({ tasks: [...state.tasks, task] }));
         return id;
@@ -668,6 +687,45 @@ export const useStore = create<StoreState>()(
         }));
       },
 
+      // ===== 标签操作 =====
+      addTag: (name, color) => {
+        const id = generateId();
+        set(state => ({ tags: [...state.tags, { id, name, color }] }));
+        return id;
+      },
+
+      updateTag: (id, data) => {
+        set(state => ({
+          tags: state.tags.map(t => t.id === id ? { ...t, ...data } : t),
+        }));
+      },
+
+      deleteTag: (id) => {
+        set(state => ({
+          tags: state.tags.filter(t => t.id !== id),
+          tasks: state.tasks.map(t =>
+            t.tagIds && t.tagIds.includes(id)
+              ? { ...t, tagIds: t.tagIds.filter(tid => tid !== id) }
+              : t
+          ),
+        }));
+      },
+
+      toggleTaskTag: (taskId, tagId) => {
+        set(state => ({
+          tasks: state.tasks.map(t => {
+            if (t.id !== taskId) return t;
+            const current = t.tagIds || [];
+            return {
+              ...t,
+              tagIds: current.includes(tagId)
+                ? current.filter(id => id !== tagId)
+                : [...current, tagId],
+            };
+          }),
+        }));
+      },
+
       // ===== 知识库操作 =====
       addKnowledge: (data) => {
         const id = generateId();
@@ -758,15 +816,11 @@ export const useStore = create<StoreState>()(
         return taskId;
       },
 
-      // 把已过期但未完成的重复任务滚动到下一次执行日期；重置非今日完成的 daily 任务
+      // 把已过期但未完成的重复任务滚动到下一次执行日期
       syncRepeatDates: () => {
         const todayStr = getTodayStr();
         set(state => ({
           tasks: state.tasks.map(t => {
-            // daily 任务：若完成时间不是今天，则清除完成时间（重置为待完成）
-            if (t.status === 'daily' && t.completedAt && t.completedAt.substring(0, 10) !== todayStr) {
-              return { ...t, completedAt: null };
-            }
             if (t.repeat === 'none' || t.status === 'done' || t.archived || t.parentId) return t;
             if (!t.dueDate) return t;
             const next = nextOccurrenceOnOrAfter(t.dueDate, t.repeat, t.repeatWeekdays, todayStr);
@@ -776,12 +830,27 @@ export const useStore = create<StoreState>()(
         }));
       },
 
+      // 每日任务每日重置：昨日完成的 daily 任务自动回到未完成状态
+      resetDailyTasks: () => {
+        set(state => {
+          let changed = false;
+          const tasks = state.tasks.map(t => {
+            if (t.status !== 'daily' || !t.completedAt) return t;
+            if (toLocalDateStr(t.completedAt) === getTodayStr()) return t;
+            changed = true;
+            return { ...t, completedAt: null };
+          });
+          return changed ? { tasks } : {};
+        });
+      },
+
       // ===== 数据管理 =====
       exportJSON: () => {
         const state = get();
         const data = {
           tasks: state.tasks,
           categories: state.categories,
+          tags: state.tags,
           knowledge: state.knowledge,
           notes: state.notes,
           userProfile: state.userProfile,
@@ -801,6 +870,7 @@ export const useStore = create<StoreState>()(
           set({
             tasks: data.tasks || [],
             categories: data.categories || defaultCategories,
+            tags: data.tags || defaultTags,
             knowledge: data.knowledge || [],
             notes: data.notes || [],
             userProfile: data.userProfile || defaultUserProfile,
@@ -819,6 +889,7 @@ export const useStore = create<StoreState>()(
         set({
           tasks: [],
           categories: defaultCategories,
+          tags: defaultTags,
           knowledge: seedKnowledge,
           notes: [],
           userProfile: defaultUserProfile,
@@ -915,7 +986,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'quest-planner-storage',
-      version: 7,
+      version: 8,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
@@ -1001,6 +1072,19 @@ export const useStore = create<StoreState>()(
           }
         }
 
+        // v7 -> v8: 新增任务标签
+        if (version < 8) {
+          if (!state.tags) {
+            state.tags = defaultTags;
+          }
+          if (state.tasks) {
+            state.tasks = state.tasks.map((t: any) => ({
+              ...t,
+              tagIds: Array.isArray(t.tagIds) ? t.tagIds : [],
+            }));
+          }
+        }
+
         return state;
       },
       onRehydrateStorage: () => (state) => {
@@ -1022,11 +1106,11 @@ export const useStore = create<StoreState>()(
             );
           }
 
-          // 同步重复任务日期：已过期但未完成的重复任务滚动到下一次执行日期
+          // 同步重复任务日期 + 重置每日任务
           const todayStr = getTodayStr();
           state.tasks = state.tasks.map(t => {
-            // daily 任务：若完成时间不是今天，则清除完成时间
-            if (t.status === 'daily' && t.completedAt && t.completedAt.substring(0, 10) !== todayStr) {
+            // daily 任务：跨天后清除完成时间，实现每日重复
+            if (t.status === 'daily' && t.completedAt && toLocalDateStr(t.completedAt) !== todayStr) {
               return { ...t, completedAt: null };
             }
             if (t.repeat === 'none' || t.status === 'done' || t.archived || t.parentId) return t;

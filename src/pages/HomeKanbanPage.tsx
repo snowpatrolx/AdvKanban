@@ -22,6 +22,7 @@ import './HomeKanbanPage.css';
 const COLUMNS: { id: TaskStatus; title: string; color: string }[] = [
   { id: 'todo', title: '待办', color: '#6c5ce7' },
   { id: 'doing', title: '进行中', color: '#fdcb6e' },
+  { id: 'daily', title: '每日', color: '#00cec9' },
   { id: 'done', title: '已完成', color: '#00b894' },
 ];
 
@@ -40,13 +41,14 @@ function priorityWeight(p: TaskPriority): number {
 
 export default function HomeKanbanPage() {
   const navigate = useNavigate();
-  const { tasks, categories, userProfile, addTask, toggleTaskComplete, setTaskStatus, toggleSubtask, reorderTasks, archiveTask, unarchiveTask, syncRepeatDates } = useStore();
+  const { tasks, categories, tags, userProfile, addTask, toggleTaskComplete, setTaskStatus, toggleSubtask, reorderTasks, archiveTask, unarchiveTask, syncRepeatDates, resetDailyTasks } = useStore();
   const addToast = useToastStore(s => s.addToast);
 
-  // 进入首页时同步重复任务日期（跨天后自动滚动到下一次执行日期）
+  // 进入首页时同步重复任务日期，并重置每日任务
   useEffect(() => {
     syncRepeatDates();
-  }, [syncRepeatDates]);
+    resetDailyTasks();
+  }, [syncRepeatDates, resetDailyTasks]);
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [search, setSearch] = useState('');
@@ -63,8 +65,8 @@ export default function HomeKanbanPage() {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
-  // 状态筛选选项顺序：all -> todo -> doing -> done -> archived
-  const statusOptions: StatusFilter[] = useMemo(() => ['all', 'todo', 'doing', 'done', 'archived'], []);
+  // 状态筛选选项顺序：all -> todo -> doing -> daily -> done -> archived
+  const statusOptions: StatusFilter[] = useMemo(() => ['all', 'todo', 'doing', 'daily', 'done', 'archived'], []);
 
   // 滑动切换状态
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -438,6 +440,7 @@ export default function HomeKanbanPage() {
                   onToggle={handleToggle}
                   onClick={() => navigate(`/task/${t.id}`)}
                   categories={categories}
+                  tags={tags}
                   allTasks={tasks}
                   onToggleSubtask={handleToggleSubtask}
                   onArchive={handleArchive}
@@ -464,6 +467,7 @@ export default function HomeKanbanPage() {
                   onToggle={handleToggle}
                   onClick={() => navigate(`/task/${t.id}`)}
                   categories={categories}
+                  tags={tags}
                   allTasks={tasks}
                   onToggleSubtask={handleToggleSubtask}
                   onArchive={handleArchive}
@@ -477,6 +481,7 @@ export default function HomeKanbanPage() {
                 onToggle={() => {}}
                 onClick={() => {}}
                 categories={categories}
+                tags={tags}
                 allTasks={tasks}
                 onToggleSubtask={() => {}}
                 dragging
@@ -583,6 +588,7 @@ function DraggableListTaskCard(props: {
   onToggle: (id: string) => void;
   onClick: () => void;
   categories: Category[];
+  tags: { id: string; name: string; color: string }[];
   allTasks: Task[];
   onToggleSubtask: (id: string) => void;
   onArchive?: (id: string) => void;
@@ -601,11 +607,12 @@ function DraggableListTaskCard(props: {
 }
 
 // ===== List Task Card (with subtask display) =====
-function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleSubtask, onArchive, dragging }: {
+function ListTaskCard({ task, onToggle, onClick, categories, tags, allTasks, onToggleSubtask, onArchive, dragging }: {
   task: Task;
   onToggle: (id: string) => void;
   onClick: () => void;
   categories: Category[];
+  tags: { id: string; name: string; color: string }[];
   allTasks: Task[];
   onToggleSubtask: (id: string) => void;
   onArchive?: (id: string) => void;
@@ -664,6 +671,11 @@ function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleS
               {catName}
             </span>
           )}
+          {tags.filter(tg => (task.tagIds || []).includes(tg.id)).map(tg => (
+            <span key={tg.id} className="tag" style={{ background: tg.color + '22', color: tg.color }}>
+              #{tg.name}
+            </span>
+          ))}
           {task.dueDate && (
             <span className={`task-due ${overdue ? 'overdue-text' : ''}`}>
               <IconCalendar size={13} color={overdue ? 'var(--color-danger)' : 'var(--color-text-secondary)'} />

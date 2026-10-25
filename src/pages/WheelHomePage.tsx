@@ -7,7 +7,7 @@ import { NotesModal } from '../components/common/NotesModal';
 import { BADGES } from '../data/badges';
 import {
   IconPlus, IconCheckCircle, IconCalendar, IconRepeat, IconChevronDown, IconChevronRight,
-  IconSubtask, IconNote, IconColumns, IconFlame, IconCoins,
+  IconSubtask, IconNote, IconColumns, IconFlame, IconCoins, IconTag,
 } from '../components/common/Icons';
 import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor, isTaskToday, getDaysUntilDue, formatDaysUntil } from '../utils/taskHelpers';
 import type { Task, TaskStatus, Category, TaskPriority } from '../types';
@@ -26,12 +26,13 @@ function priorityWeight(p: TaskPriority): number {
 
 export default function WheelHomePage() {
   const navigate = useNavigate();
-  const { tasks, categories, userProfile, toggleTaskComplete, toggleSubtask, addTask, syncRepeatDates } = useStore();
+  const { tasks, categories, tags, userProfile, toggleTaskComplete, toggleSubtask, addTask, syncRepeatDates, resetDailyTasks } = useStore();
   const addToast = useToastStore(s => s.addToast);
 
   useEffect(() => {
     syncRepeatDates();
-  }, [syncRepeatDates]);
+    resetDailyTasks();
+  }, [syncRepeatDates, resetDailyTasks]);
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -111,7 +112,11 @@ export default function WheelHomePage() {
           <span className="wh-stat-value">{userProfile.currentStreak}</span>
           <span className="wh-stat-label">天连续</span>
         </div>
-        <button className="wh-kanban-btn" onClick={() => navigate('/kanban')}>
+        <button className="wh-kanban-btn" onClick={() => navigate('/tags')}>
+          <IconTag size={16} color="#fff" />
+          <span>标签</span>
+        </button>
+        <button className="wh-kanban-btn wh-kanban-btn-secondary" onClick={() => navigate('/kanban')}>
           <IconColumns size={16} color="var(--color-primary)" />
           <span>全部任务</span>
         </button>
@@ -138,6 +143,7 @@ export default function WheelHomePage() {
               onToggle={handleToggle}
               onClick={() => navigate(`/task/${t.id}`)}
               categories={categories}
+              tags={tags}
               allTasks={tasks}
               onToggleSubtask={handleToggleSubtask}
             />
@@ -163,6 +169,7 @@ export default function WheelHomePage() {
               onToggle={handleToggle}
               onClick={() => navigate(`/task/${t.id}`)}
               categories={categories}
+              tags={tags}
               allTasks={tasks}
               onToggleSubtask={handleToggleSubtask}
             />
@@ -231,11 +238,12 @@ export default function WheelHomePage() {
 }
 
 // ===== Wheel Task Card =====
-function WheelTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleSubtask }: {
+function WheelTaskCard({ task, onToggle, onClick, categories, tags, allTasks, onToggleSubtask }: {
   task: Task;
   onToggle: (id: string) => void;
   onClick: () => void;
   categories: Category[];
+  tags: { id: string; name: string; color: string }[];
   allTasks: Task[];
   onToggleSubtask: (id: string) => void;
 }) {
@@ -247,6 +255,7 @@ function WheelTaskCard({ task, onToggle, onClick, categories, allTasks, onToggle
   const subtasks = allTasks.filter(t => t.parentId === task.id);
   const incompleteSubtasks = subtasks.filter(t => t.status !== 'done');
   const firstIncompleteSubtask = incompleteSubtasks[0];
+  const taskTags = tags.filter(t => (task.tagIds || []).includes(t.id));
 
   const isCompleted = task.status === 'done' || (task.status === 'daily' && !!task.completedAt && isToday(task.completedAt));
 
@@ -290,6 +299,15 @@ function WheelTaskCard({ task, onToggle, onClick, categories, allTasks, onToggle
               {catName}
             </span>
           )}
+          {taskTags.map(tag => (
+            <span
+              key={tag.id}
+              className="tag task-tag-chip"
+              style={{ background: tag.color + '22', color: tag.color }}
+            >
+              {tag.name}
+            </span>
+          ))}
           {task.dueDate && (
             <span className={`task-due ${overdue ? 'overdue-text' : ''}`}>
               <IconCalendar size={13} color={overdue ? 'var(--color-danger)' : 'var(--color-text-secondary)'} />

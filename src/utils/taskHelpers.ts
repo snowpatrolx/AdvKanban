@@ -39,11 +39,21 @@ export function getCategoryColor(categories: Category[], categoryId: string | nu
   return categories.find(c => c.id === categoryId)?.color || '#b2bec3';
 }
 
+/**
+ * 将 ISO 时间或 YYYY-MM-DD 统一转成本地时区的 YYYY-MM-DD
+ * 避免 UTC 日期在凌晨时段与本地日期不一致
+ */
+export function toLocalDateStr(value: string | null): string {
+  if (!value) return '';
+  if (value.length <= 10) return value.substring(0, 10);
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value.substring(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function isToday(dateStr: string | null): boolean {
   if (!dateStr) return false;
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  return dateStr.substring(0, 10) === todayStr;
+  return toLocalDateStr(dateStr) === getTodayStr();
 }
 
 export function isOverdue(dateStr: string | null, status: Task['status']): boolean {
