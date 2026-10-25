@@ -11,7 +11,6 @@ import AIAnalysisPage from './pages/AIAnalysisPage';
 import DailyStatsPage from './pages/DailyStatsPage';
 import TaskDetailPage from './pages/TaskDetailPage';
 import CategoryManagePage from './pages/CategoryManagePage';
-import TagManagePage from './pages/TagManagePage';
 import DataManagePage from './pages/DataManagePage';
 
 function ScrollToTop() {
@@ -67,7 +66,6 @@ function Layout() {
         <Route path="/task/:id" element={<TaskDetailPage />} />
         <Route path="/task/new" element={<TaskDetailPage />} />
         <Route path="/categories" element={<CategoryManagePage />} />
-        <Route path="/tags" element={<TagManagePage />} />
         <Route path="/data" element={<DataManagePage />} />
       </Routes>
       {showNav && <BottomNav />}

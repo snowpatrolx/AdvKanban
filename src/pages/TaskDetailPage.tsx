@@ -5,7 +5,7 @@ import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
 import { BADGES } from '../data/badges';
 import {
-  IconBack, IconTrash, IconPlus, IconCheckCircle, IconRepeat, IconSubtask, IconCheck, IconEdit, IconTag,
+  IconBack, IconTrash, IconPlus, IconCheckCircle, IconRepeat, IconSubtask, IconCheck, IconEdit,
 } from '../components/common/Icons';
 import type { TaskPriority, TaskStatus, RepeatType } from '../types';
 import './TaskDetailPage.css';
@@ -15,7 +15,7 @@ const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 export default function TaskDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tasks, categories, tags, addTask, updateTask, deleteTask, toggleTaskComplete, addSubtask, updateSubtask, deleteSubtask, toggleSubtask } = useStore();
+  const { tasks, categories, addTask, updateTask, deleteTask, toggleTaskComplete, addSubtask, updateSubtask, deleteSubtask, toggleSubtask } = useStore();
   const addToast = useToastStore(s => s.addToast);
 
   const isNew = id === 'new' || !id;
@@ -26,7 +26,6 @@ export default function TaskDetailPage() {
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [priority, setPriority] = useState<TaskPriority>(null);
   const [categoryId, setCategoryId] = useState<string>('');
-  const [tagIds, setTagIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState('');
   const [repeat, setRepeat] = useState<RepeatType>('none');
   const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>([]);
@@ -45,7 +44,6 @@ export default function TaskDetailPage() {
       setStatus(existing.status);
       setPriority(existing.priority);
       setCategoryId(existing.categoryId || '');
-      setTagIds(existing.tagIds || []);
       setDueDate(existing.dueDate || '');
       setRepeat(existing.repeat || 'none');
       setRepeatWeekdays(existing.repeatWeekdays || []);
@@ -68,7 +66,6 @@ export default function TaskDetailPage() {
         priority,
         categoryId: categoryId || null,
         dueDate: dueDate || null,
-        tagIds,
         ...repeatData,
       });
       addToast({ icon: '✓', title: '任务已创建' });
@@ -81,7 +78,6 @@ export default function TaskDetailPage() {
         priority,
         categoryId: categoryId || null,
         dueDate: dueDate || null,
-        tagIds,
         ...repeatData,
       });
 
@@ -226,39 +222,6 @@ export default function TaskDetailPage() {
             <label className="form-label">截止日期</label>
             <input type="date" className="form-input" value={dueDate} onChange={e => setDueDate(e.target.value)} />
           </div>
-        </div>
-
-        {/* 标签 */}
-        <div className="form-group">
-          <label className="form-label">
-            <IconTag size={16} color="var(--color-primary)" /> 标签
-          </label>
-          {tags.length === 0 ? (
-            <p className="task-tag-empty">
-              还没有标签，
-              <span className="task-tag-empty-link" onClick={() => navigate('/tags')}>去创建</span>
-            </p>
-          ) : (
-            <div className="task-tag-picker">
-              {tags.map(tag => {
-                const selected = tagIds.includes(tag.id);
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    className={`task-tag-option ${selected ? 'selected' : ''}`}
-                    style={selected ? { background: tag.color, borderColor: tag.color, color: '#fff' } : {}}
-                    onClick={() => setTagIds(prev =>
-                      prev.includes(tag.id) ? prev.filter(t => t !== tag.id) : [...prev, tag.id]
-                    )}
-                  >
-                    <span className="task-tag-dot" style={{ background: selected ? '#fff' : tag.color }} />
-                    {tag.name}
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* 重复任务设置 */}

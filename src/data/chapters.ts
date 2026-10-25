@@ -25,7 +25,7 @@ export const CHAPTERS: StoryChapter[] = [
     options: [
       { id: 'slash', label: '挥剑斩击', cost: 5, damage: 15, description: '普通一击，稳定输出' },
       { id: 'fire', label: '点燃火把', cost: 10, damage: 25, description: '木灵怕火，造成大量伤害' },
-      { id: 'wind', label: '风之律动', cost: 15, damage: 35, description: '借森林之风发起猛攻' },
+      { id: 'wind', label: '风之律动', cost: 15, damage: 0, effect: 'weaken', weakenMultiplier: 1.5, weakenTurns: 3, description: '借森林之风扰乱木灵，接下来 3 次出手伤害 ×1.5' },
     ],
   },
   {
@@ -41,7 +41,8 @@ export const CHAPTERS: StoryChapter[] = [
     options: [
       { id: 'dagger', label: '淬毒匕首', cost: 10, damage: 30, description: '以毒攻毒，克制巫女' },
       { id: 'light', label: '净化之光', cost: 18, damage: 50, description: '驱散黑暗，灼伤巫女' },
-      { id: 'thorn', label: '荆棘缠绕', cost: 25, damage: 70, description: '召唤荆棘束缚并撕裂敌人' },
+      { id: 'thorn', label: '荆棘缠绕', cost: 25, damage: 0, effect: 'weaken', weakenMultiplier: 1.6, weakenTurns: 3, description: '荆棘束缚巫女，接下来 3 次出手伤害 ×1.6' },
+      { id: 'relic', label: '搜刮祭坛', cost: 0, damage: 0, effect: 'loot', lootCoins: 25, description: '拾取祭坛上的遗物，获得 25 金币' },
     ],
   },
   {
@@ -55,9 +56,10 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '巨大的石柱矗立在遗迹之中，墙壁上刻满了古老的符文。当你试图解读它们时，地面开始震动——遗迹守卫苏醒了，它庞大的石质身躯挡在了前方。',
     bossDefeatedText: '守卫轰然倒塌，扬起漫天尘土。遗迹深处的一道门缓缓打开，通向龙之巢穴。',
     options: [
-      { id: 'rune', label: '符文破解', cost: 15, damage: 45, description: '解读符文，削弱守卫' },
+      { id: 'rune', label: '符文破解', cost: 15, damage: 0, effect: 'weaken', weakenMultiplier: 1.6, weakenTurns: 4, description: '解析符文削弱守卫，接下来 4 次出手伤害 ×1.6' },
       { id: 'hammer', label: '巨锤重击', cost: 22, damage: 65, description: '以蛮力击碎石质身躯' },
       { id: 'collapse', label: '遗迹崩塌', cost: 35, damage: 95, description: '触发机关，让遗迹自身压垮守卫' },
+      { id: 'chest', label: '撬开宝箱', cost: 0, damage: 0, effect: 'loot', lootCoins: 35, description: '撬开遗迹宝箱，获得 35 金币' },
     ],
   },
   {
@@ -72,7 +74,7 @@ export const CHAPTERS: StoryChapter[] = [
     bossDefeatedText: '随着最后一击，拖延之龙发出震耳欲聋的咆哮，化为灰烬消散。阳光重新照耀大陆，混沌终结，秩序恢复。你，就是传说中的英雄！',
     options: [
       { id: 'arrow', label: '屠龙箭雨', cost: 25, damage: 90, description: '漫天箭雨射向巨龙' },
-      { id: 'frost', label: '冰霜吐息', cost: 35, damage: 140, description: '以极寒冰封龙焰' },
+      { id: 'frost', label: '冰霜吐息', cost: 35, damage: 0, effect: 'weaken', weakenMultiplier: 1.8, weakenTurns: 3, description: '冰封龙鳞，接下来 3 次出手伤害 ×1.8' },
       { id: 'thunder', label: '雷霆审判', cost: 50, damage: 220, description: '召唤天雷轰击巨龙' },
       { id: 'ultimate', label: '秩序之刃', cost: 80, damage: 350, description: '汇聚秩序之力的终极一击' },
     ],
@@ -90,6 +92,7 @@ export const CHAPTERS: StoryChapter[] = [
     options: [
       { id: 'gale', label: '烈风斩', cost: 30, damage: 130, description: '借云端烈风斩击守护者' },
       { id: 'holy', label: '圣光裁决', cost: 45, damage: 200, description: '降下圣光审判敌人' },
+      { id: 'mist', label: '云雾迷阵', cost: 50, damage: 0, effect: 'weaken', weakenMultiplier: 1.8, weakenTurns: 3, description: '云雾遮蔽守护者，接下来 3 次出手伤害 ×1.8' },
       { id: 'starfall', label: '流星坠落', cost: 60, damage: 290, description: '引导流星轰击天空之城' },
       { id: 'divine', label: '神圣审判', cost: 100, damage: 450, description: '降下神圣之力终结守护者' },
     ],
@@ -107,6 +110,7 @@ export const CHAPTERS: StoryChapter[] = [
     options: [
       { id: 'wave', label: '浪潮之刃', cost: 40, damage: 180, description: '操控巨浪切割利维坦' },
       { id: 'void', label: '虚空之矛', cost: 55, damage: 280, description: '凝聚虚空之力的长矛' },
+      { id: 'treasure', label: '沉船宝藏', cost: 0, damage: 0, effect: 'loot', lootCoins: 80, description: '潜入沉船打捞宝藏，获得 80 金币' },
       { id: 'nova', label: '超新星爆发', cost: 80, damage: 420, description: '引爆星辰之力' },
       { id: 'cosmos', label: '宇宙坍缩', cost: 130, damage: 650, description: '以宇宙之力碾压海蛇' },
     ],
@@ -122,7 +126,7 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '沿着星光之路前行，你来到了时光圣殿。过去与未来在这里交织，时间守望者立于沙漏之旁："凡人，你可知晓时间的重量？"',
     bossDefeatedText: '时间守望者停下了沙漏："你已超越时间的束缚。去吧，去书写属于你自己的永恒。"圣殿深处，一颗永恒之心正在闪耀。',
     options: [
-      { id: 'rewind', label: '时间回溯', cost: 50, damage: 230, description: '回溯时间，削弱守望者' },
+      { id: 'rewind', label: '时间回溯', cost: 50, damage: 0, effect: 'weaken', weakenMultiplier: 2, weakenTurns: 3, description: '回溯守望者的时间，接下来 3 次出手伤害 ×2' },
       { id: 'accel', label: '时间加速', cost: 70, damage: 360, description: '加速时间风化守望者' },
       { id: 'paradox', label: '时空悖论', cost: 100, damage: 540, description: '制造悖论撕裂守望者' },
       { id: 'eternity', label: '永恒冻结', cost: 160, damage: 850, description: '冻结时间，终结守望者' },
@@ -140,7 +144,7 @@ export const CHAPTERS: StoryChapter[] = [
     bossDefeatedText: '混沌之主化为万千光点，融入了宇宙之中。秩序与混沌重新达到了平衡。而你，已不再只是一个冒险者——你成为了新世界的缔造者。新的冒险，才刚刚开始……',
     options: [
       { id: 'order', label: '秩序之力', cost: 70, damage: 350, description: '以秩序之力对抗混沌' },
-      { id: 'balance', label: '阴阳调和', cost: 100, damage: 560, description: '调和阴阳，压制混沌' },
+      { id: 'balance', label: '阴阳调和', cost: 100, damage: 0, effect: 'weaken', weakenMultiplier: 2, weakenTurns: 4, description: '调和阴阳压制混沌，接下来 4 次出手伤害 ×2' },
       { id: 'creation', label: '创世之光', cost: 150, damage: 850, description: '绽放创世的光辉' },
       { id: 'infinity', label: '无限裁决', cost: 220, damage: 1300, description: '释放无限之力，终结混沌之主' },
     ],

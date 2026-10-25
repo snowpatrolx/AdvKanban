@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
-  Task, Category, Tag, Knowledge, Note, UserProfile, StoryProgress, StoryLog, DailyRecord,
+  Task, Category, Knowledge, Note, UserProfile, StoryProgress, StoryLog, DailyRecord,
   TaskStatus, TaskPriority, RepeatType, LogType,
 } from '../types';
 import { generateId, getTodayStr } from '../utils/id';
@@ -16,7 +16,6 @@ import { BADGES } from '../data/badges';
 interface StoreState {
   tasks: Task[];
   categories: Category[];
-  tags: Tag[];
   knowledge: Knowledge[];
   notes: Note[];
   userProfile: UserProfile;
@@ -47,12 +46,6 @@ interface StoreState {
   updateCategory: (id: string, data: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
 
-  // 标签操作
-  addTag: (name: string, color: string) => string;
-  updateTag: (id: string, data: Partial<Tag>) => void;
-  deleteTag: (id: string) => void;
-  toggleTaskTag: (taskId: string, tagId: string) => void;
-
   // 知识库操作
   addKnowledge: (data: Partial<Knowledge>) => string;
   updateKnowledge: (id: string, data: Partial<Knowledge>) => void;
@@ -79,14 +72,14 @@ interface StoreState {
   spendCoins: (amount: number) => boolean;
 
   // 互动
-  adventureOption: (optionId: string) => { bossDamage: number; message: string; bossDefeated: boolean; cost: number };
+  adventureOption: (optionId: string) => { bossDamage: number; message: string; bossDefeated: boolean; cost: number; coinsGained: number; weakened: boolean };
 
   // 内部
   _processTaskCompletion: (task: Task) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.15';
+export const APP_VERSION = '1.16';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -97,13 +90,6 @@ const defaultCategories: Category[] = [
 
 // any 分类 ID，属于所有分类
 export const ANY_CATEGORY_ID = 'cat-any';
-
-// 默认标签
-const defaultTags: Tag[] = [
-  { id: 'tag-work', name: '工作', color: '#0984e3' },
-  { id: 'tag-study', name: '学习', color: '#6c5ce7' },
-  { id: 'tag-life', name: '生活', color: '#00b894' },
-];
 
 // 旧分类ID到新分类ID的映射
 const categoryIdMap: Record<string, string> = {
@@ -175,6 +161,7 @@ const defaultStoryProgress: StoryProgress = {
   unlockedChapters: [1],
   bossCurrentHP: {},
   defeatedBosses: [],
+  bossWeaken: {},
 };
 
 // 创建故事日志的辅助函数
@@ -205,7 +192,6 @@ export const useStore = create<StoreState>()(
     (set, get) => ({
       tasks: [],
       categories: defaultCategories,
-      tags: defaultTags,
       knowledge: seedKnowledge,
       notes: [],
       userProfile: defaultUserProfile,
@@ -234,7 +220,6 @@ export const useStore = create<StoreState>()(
           repeatWeekdays: data.repeatWeekdays,
           repeatCount: data.repeatCount ?? 0,
           parentId: data.parentId || null,
-          tagIds: data.tagIds || [],
         };
         set(state => ({ tasks: [...state.tasks, task] }));
         return id;
@@ -687,45 +672,6 @@ export const useStore = create<StoreState>()(
         }));
       },
 
-      // ===== 标签操作 =====
-      addTag: (name, color) => {
-        const id = generateId();
-        set(state => ({ tags: [...state.tags, { id, name, color }] }));
-        return id;
-      },
-
-      updateTag: (id, data) => {
-        set(state => ({
-          tags: state.tags.map(t => t.id === id ? { ...t, ...data } : t),
-        }));
-      },
-
-      deleteTag: (id) => {
-        set(state => ({
-          tags: state.tags.filter(t => t.id !== id),
-          tasks: state.tasks.map(t =>
-            t.tagIds && t.tagIds.includes(id)
-              ? { ...t, tagIds: t.tagIds.filter(tid => tid !== id) }
-              : t
-          ),
-        }));
-      },
-
-      toggleTaskTag: (taskId, tagId) => {
-        set(state => ({
-          tasks: state.tasks.map(t => {
-            if (t.id !== taskId) return t;
-            const current = t.tagIds || [];
-            return {
-              ...t,
-              tagIds: current.includes(tagId)
-                ? current.filter(id => id !== tagId)
-                : [...current, tagId],
-            };
-          }),
-        }));
-      },
-
       // ===== 知识库操作 =====
       addKnowledge: (data) => {
         const id = generateId();
@@ -850,7 +796,6 @@ export const useStore = create<StoreState>()(
         const data = {
           tasks: state.tasks,
           categories: state.categories,
-          tags: state.tags,
           knowledge: state.knowledge,
           notes: state.notes,
           userProfile: state.userProfile,
@@ -870,7 +815,6 @@ export const useStore = create<StoreState>()(
           set({
             tasks: data.tasks || [],
             categories: data.categories || defaultCategories,
-            tags: data.tags || defaultTags,
             knowledge: data.knowledge || [],
             notes: data.notes || [],
             userProfile: data.userProfile || defaultUserProfile,
@@ -889,7 +833,6 @@ export const useStore = create<StoreState>()(
         set({
           tasks: [],
           categories: defaultCategories,
-          tags: defaultTags,
           knowledge: seedKnowledge,
           notes: [],
           userProfile: defaultUserProfile,
@@ -908,66 +851,96 @@ export const useStore = create<StoreState>()(
         return true;
       },
 
-      // 冒险章节互动：消耗金币选择选项，对 Boss 造成伤害
+      // 冒险章节互动：消耗金币选择选项，产生伤害 / 削弱 / 金币效果
       adventureOption: (optionId) => {
         const state = get();
         const currentChapter = CHAPTERS.find(c => c.id === state.storyProgress.currentChapter);
         if (!currentChapter || !currentChapter.bossName) {
-          return { bossDamage: 0, message: '当前章节没有 Boss', bossDefeated: false, cost: 0 };
+          return { bossDamage: 0, message: '当前章节没有 Boss', bossDefeated: false, cost: 0, coinsGained: 0, weakened: false };
         }
         if (state.storyProgress.defeatedBosses.includes(currentChapter.id)) {
-          return { bossDamage: 0, message: `${currentChapter.bossName} 已被击败`, bossDefeated: false, cost: 0 };
+          return { bossDamage: 0, message: `${currentChapter.bossName} 已被击败`, bossDefeated: false, cost: 0, coinsGained: 0, weakened: false };
         }
 
         const option = currentChapter.options?.find(o => o.id === optionId);
         if (!option) {
-          return { bossDamage: 0, message: '未知选项', bossDefeated: false, cost: 0 };
+          return { bossDamage: 0, message: '未知选项', bossDefeated: false, cost: 0, coinsGained: 0, weakened: false };
         }
 
         // 检查金币是否足够
         if (state.userProfile.coins < option.cost) {
-          return { bossDamage: 0, message: `金币不足，需要 ${option.cost} 金币`, bossDefeated: false, cost: option.cost };
+          return { bossDamage: 0, message: `金币不足，需要 ${option.cost} 金币`, bossDefeated: false, cost: option.cost, coinsGained: 0, weakened: false };
         }
 
-        // 扣除金币
-        const newCoins = state.userProfile.coins - option.cost;
-
-        // 造成伤害
-        const bossDamage = option.damage;
+        const effect = option.effect || 'damage';
+        const chapterId = currentChapter.id;
         const bossMaxHP = currentChapter.bossHP;
-        const currentHP = state.storyProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
-        const newHP = Math.max(0, currentHP - bossDamage);
-        const bossDefeated = newHP === 0;
+        const currentHP = state.storyProgress.bossCurrentHP[chapterId] ?? bossMaxHP;
+        const bossWeaken = { ...(state.storyProgress.bossWeaken || {}) };
 
-        const message = `你选择了「${option.label}」，消耗 ${option.cost} 金币，对 ${currentChapter.bossName} 造成 ${bossDamage} 点伤害！`;
+        let bossDamage = 0;
+        let coinsGained = 0;
+        let weakened = false;
+        let newHP = currentHP;
+        let message = '';
+
+        if (effect === 'loot') {
+          // 掠夺：不造成伤害，反而获得金币
+          coinsGained = option.lootCoins || 0;
+          message = `你选择了「${option.label}」，搜刮到 ${coinsGained} 金币，${currentChapter.bossName} 毫发无损。`;
+        } else if (effect === 'weaken') {
+          // 削弱：施加易伤状态，后续出手伤害提升
+          const multiplier = option.weakenMultiplier ?? 1.5;
+          const turns = option.weakenTurns ?? 3;
+          bossWeaken[chapterId] = { multiplier, remaining: turns };
+          weakened = true;
+          message = `你选择了「${option.label}」，${currentChapter.bossName} 的防御被削弱，接下来 ${turns} 次出手伤害 ×${multiplier}！`;
+        } else {
+          // 伤害：若处于削弱状态，则本次伤害放大并消耗一次削弱
+          let damage = option.damage;
+          const weak = bossWeaken[chapterId];
+          if (weak && weak.remaining > 0) {
+            damage = Math.round(damage * weak.multiplier);
+            const remaining = weak.remaining - 1;
+            if (remaining > 0) bossWeaken[chapterId] = { multiplier: weak.multiplier, remaining };
+            else delete bossWeaken[chapterId];
+          }
+          bossDamage = damage;
+          newHP = Math.max(0, currentHP - damage);
+          message = `你选择了「${option.label}」，消耗 ${option.cost} 金币，对 ${currentChapter.bossName} 造成 ${damage} 点伤害！`;
+        }
+
+        const bossDefeated = newHP === 0 && currentHP > 0;
+        const newCoins = state.userProfile.coins - option.cost + coinsGained;
 
         set(s => {
           const newStoryProgress = { ...s.storyProgress };
           newStoryProgress.bossCurrentHP = {
             ...newStoryProgress.bossCurrentHP,
-            [currentChapter.id]: newHP,
+            [chapterId]: newHP,
           };
+          newStoryProgress.bossWeaken = bossWeaken;
 
           const newStoryLogs = [...s.storyLogs];
           newStoryLogs.push({
             id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-            chapterId: currentChapter.id,
-            type: 'damage' as LogType,
+            chapterId,
+            type: (effect === 'damage' ? 'damage' : 'story') as LogType,
             text: message,
             createdAt: new Date().toISOString(),
           });
 
-          if (bossDefeated && !newStoryProgress.defeatedBosses.includes(currentChapter.id)) {
-            newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, currentChapter.id];
+          if (bossDefeated && !newStoryProgress.defeatedBosses.includes(chapterId)) {
+            newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, chapterId];
             newStoryLogs.push({
               id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-defeat`,
-              chapterId: currentChapter.id,
+              chapterId,
               type: 'story' as LogType,
               text: `你成功击败了 ${currentChapter.bossName}！${currentChapter.bossDefeatedText}`,
               createdAt: new Date().toISOString(),
             });
 
-            const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
+            const nextChapter = CHAPTERS.find(c => c.id === chapterId + 1);
             if (nextChapter && !newStoryProgress.unlockedChapters.includes(nextChapter.id)) {
               newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
               newStoryProgress.currentChapter = nextChapter.id;
@@ -981,12 +954,12 @@ export const useStore = create<StoreState>()(
           };
         });
 
-        return { bossDamage, message, bossDefeated, cost: option.cost };
+        return { bossDamage, message, bossDefeated, cost: option.cost, coinsGained, weakened };
       },
     }),
     {
       name: 'quest-planner-storage',
-      version: 8,
+      version: 9,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
@@ -1072,16 +1045,17 @@ export const useStore = create<StoreState>()(
           }
         }
 
-        // v7 -> v8: 新增任务标签
-        if (version < 8) {
-          if (!state.tags) {
-            state.tags = defaultTags;
-          }
+        // v8 -> v9: 移除任务标签数据，新增 Boss 削弱状态字段
+        if (version < 9) {
+          delete state.tags;
           if (state.tasks) {
-            state.tasks = state.tasks.map((t: any) => ({
-              ...t,
-              tagIds: Array.isArray(t.tagIds) ? t.tagIds : [],
-            }));
+            state.tasks = state.tasks.map((t: any) => {
+              const { tagIds, ...rest } = t;
+              return rest;
+            });
+          }
+          if (state.storyProgress && !state.storyProgress.bossWeaken) {
+            state.storyProgress = { ...state.storyProgress, bossWeaken: {} };
           }
         }
 

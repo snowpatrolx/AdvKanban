@@ -32,32 +32,6 @@
   color: var(--color-text-light);
 }
 
-.wh-kanban-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--color-primary);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-full, 999px);
-  padding: 7px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.wh-kanban-btn-secondary {
-  margin-left: auto;
-  background: var(--color-card);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
-}
-
-/* 任务标签 chip */
-.task-tag-chip {
-  font-weight: 600;
-}
-
 /* 区块 */
 .wh-section {
   background: var(--color-card);

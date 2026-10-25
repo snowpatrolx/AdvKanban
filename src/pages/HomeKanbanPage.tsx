@@ -41,7 +41,7 @@ function priorityWeight(p: TaskPriority): number {
 
 export default function HomeKanbanPage() {
   const navigate = useNavigate();
-  const { tasks, categories, tags, userProfile, addTask, toggleTaskComplete, setTaskStatus, toggleSubtask, reorderTasks, archiveTask, unarchiveTask, syncRepeatDates, resetDailyTasks } = useStore();
+  const { tasks, categories, userProfile, addTask, toggleTaskComplete, setTaskStatus, toggleSubtask, reorderTasks, archiveTask, unarchiveTask, syncRepeatDates, resetDailyTasks } = useStore();
   const addToast = useToastStore(s => s.addToast);
 
   // 进入首页时同步重复任务日期，并重置每日任务
@@ -125,13 +125,6 @@ export default function HomeKanbanPage() {
 
   // 已归档任务总数（不受搜索/分类筛选影响，用于按钮计数）
   const archivedCount = useMemo(() => tasks.filter(t => !t.parentId && t.archived).length, [tasks]);
-
-  // 今日完成的任务数（主任务 + 子任务，用于每日任务轮盘，每天自动重置）
-  const todayCompletedCount = useMemo(
-    () => tasks.filter(t => t.status === 'done' && isToday(t.completedAt)).length
-      + tasks.filter(t => t.status === 'daily' && t.completedAt && isToday(t.completedAt)).length,
-    [tasks],
-  );
 
   // 已归档任务列表（用于归档视图，按完成时间倒序）
   const archivedTasks = useMemo(() => {
@@ -305,9 +298,6 @@ export default function HomeKanbanPage() {
 
   return (
     <div className="page home-kanban-page">
-      {/* 每日任务轮盘 */}
-      <DailyWheelCard count={todayCompletedCount} />
-
       {/* 顶部工具栏 */}
       <div className="hk-toolbar">
         <div className="hk-search-wrap">
@@ -440,7 +430,6 @@ export default function HomeKanbanPage() {
                   onToggle={handleToggle}
                   onClick={() => navigate(`/task/${t.id}`)}
                   categories={categories}
-                  tags={tags}
                   allTasks={tasks}
                   onToggleSubtask={handleToggleSubtask}
                   onArchive={handleArchive}
@@ -467,7 +456,6 @@ export default function HomeKanbanPage() {
                   onToggle={handleToggle}
                   onClick={() => navigate(`/task/${t.id}`)}
                   categories={categories}
-                  tags={tags}
                   allTasks={tasks}
                   onToggleSubtask={handleToggleSubtask}
                   onArchive={handleArchive}
@@ -481,7 +469,6 @@ export default function HomeKanbanPage() {
                 onToggle={() => {}}
                 onClick={() => {}}
                 categories={categories}
-                tags={tags}
                 allTasks={tasks}
                 onToggleSubtask={() => {}}
                 dragging
@@ -588,7 +575,6 @@ function DraggableListTaskCard(props: {
   onToggle: (id: string) => void;
   onClick: () => void;
   categories: Category[];
-  tags: { id: string; name: string; color: string }[];
   allTasks: Task[];
   onToggleSubtask: (id: string) => void;
   onArchive?: (id: string) => void;
@@ -607,12 +593,11 @@ function DraggableListTaskCard(props: {
 }
 
 // ===== List Task Card (with subtask display) =====
-function ListTaskCard({ task, onToggle, onClick, categories, tags, allTasks, onToggleSubtask, onArchive, dragging }: {
+function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleSubtask, onArchive, dragging }: {
   task: Task;
   onToggle: (id: string) => void;
   onClick: () => void;
   categories: Category[];
-  tags: { id: string; name: string; color: string }[];
   allTasks: Task[];
   onToggleSubtask: (id: string) => void;
   onArchive?: (id: string) => void;
@@ -671,11 +656,6 @@ function ListTaskCard({ task, onToggle, onClick, categories, tags, allTasks, onT
               {catName}
             </span>
           )}
-          {tags.filter(tg => (task.tagIds || []).includes(tg.id)).map(tg => (
-            <span key={tg.id} className="tag" style={{ background: tg.color + '22', color: tg.color }}>
-              #{tg.name}
-            </span>
-          ))}
           {task.dueDate && (
             <span className={`task-due ${overdue ? 'overdue-text' : ''}`}>
               <IconCalendar size={13} color={overdue ? 'var(--color-danger)' : 'var(--color-text-secondary)'} />
@@ -898,73 +878,3 @@ function ArchivedTaskCard({ task, categories, onRestore, onClick }: {
   );
 }
 
-// ===== 每日任务轮盘 =====
-const WHEEL_SEGMENTS = 12;
-
-function polarPoint(cx: number, cy: number, r: number, deg: number) {
-  const rad = ((deg - 90) * Math.PI) / 180;
-  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-}
-
-function sectorPath(cx: number, cy: number, rOuter: number, rInner: number, startDeg: number, endDeg: number) {
-  const p1 = polarPoint(cx, cy, rOuter, startDeg);
-  const p2 = polarPoint(cx, cy, rOuter, endDeg);
-  const p3 = polarPoint(cx, cy, rInner, endDeg);
-  const p4 = polarPoint(cx, cy, rInner, startDeg);
-  const largeArc = endDeg - startDeg > 180 ? 1 : 0;
-  return `M${p1.x} ${p1.y} A${rOuter} ${rOuter} 0 ${largeArc} 1 ${p2.x} ${p2.y} L${p3.x} ${p3.y} A${rInner} ${rInner} 0 ${largeArc} 0 ${p4.x} ${p4.y} Z`;
-}
-
-// 轮盘颜色：从主色紫渐变到青绿色
-function wheelSegmentColor(i: number) {
-  const t = i / (WHEEL_SEGMENTS - 1);
-  const from = [108, 92, 231];
-  const to = [0, 206, 201];
-  const c = from.map((v, idx) => Math.round(v + (to[idx] - v) * t));
-  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
-}
-
-function DailyWheelCard({ count }: { count: number }) {
-  const filled = Math.min(count, WHEEL_SEGMENTS);
-  const seg = 360 / WHEEL_SEGMENTS;
-  const gap = 3;
-  const remaining = WHEEL_SEGMENTS - filled;
-
-  return (
-    <div className="daily-wheel-card">
-      <div className="daily-wheel-svg-wrap">
-        <svg viewBox="0 0 200 200" className="daily-wheel-svg" key={filled}>
-          {Array.from({ length: WHEEL_SEGMENTS }).map((_, i) => (
-            <path
-              key={`bg-${i}`}
-              d={sectorPath(100, 100, 88, 58, i * seg + gap / 2, (i + 1) * seg - gap / 2)}
-              className="daily-wheel-seg-bg"
-            />
-          ))}
-          {Array.from({ length: filled }).map((_, i) => (
-            <path
-              key={`fill-${i}`}
-              d={sectorPath(100, 100, 88, 58, i * seg + gap / 2, (i + 1) * seg - gap / 2)}
-              fill={wheelSegmentColor(i)}
-              className="daily-wheel-seg-fill"
-              style={{ animationDelay: `${i * 55}ms` }}
-            />
-          ))}
-        </svg>
-        <div className="daily-wheel-center">
-          <span className="daily-wheel-count">{count}</span>
-          <span className="daily-wheel-total">/{WHEEL_SEGMENTS}</span>
-        </div>
-      </div>
-      <div className="daily-wheel-info">
-        <div className="daily-wheel-title">今日任务轮盘</div>
-        <div className="daily-wheel-desc">
-          {remaining <= 0
-            ? '今日轮盘已点亮，太棒了！'
-            : `再完成 ${remaining} 个任务即可点亮整个轮盘`}
-        </div>
-        <div className="daily-wheel-hint">每天 0 点自动重置</div>
-      </div>
-    </div>
-  );
-}

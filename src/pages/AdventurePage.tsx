@@ -12,19 +12,22 @@ const LOG_TYPE_LABELS: Record<LogType, string> = {
   story: '剧情',
 };
 
-// 金币选项的稀有度
-type OptionTier = 'common' | 'rare' | 'epic' | 'legendary';
-
-const OPTION_TIERS: Record<OptionTier, { label: string; particles: number }> = {
-  common: { label: '普通', particles: 6 },
-  rare: { label: '稀有', particles: 9 },
-  epic: { label: '史诗', particles: 13 },
-  legendary: { label: '传说', particles: 18 },
+// 选项效果标签
+const EFFECT_LABELS: Record<string, string> = {
+  damage: '伤害',
+  weaken: '削弱',
+  loot: '金币',
 };
 
-// 选项位置决定稀有度：越靠后越强
-function getOptionTier(index: number): OptionTier {
-  return (['common', 'rare', 'epic', 'legendary'] as OptionTier[])[Math.min(index, 3)];
+function getOptionTag(option: { effect?: string; damage: number; weakenMultiplier?: number; weakenTurns?: number; lootCoins?: number }) {
+  const effect = option.effect || 'damage';
+  if (effect === 'weaken') {
+    return `削弱 ×${option.weakenMultiplier ?? 1.5} / ${option.weakenTurns ?? 3} 次`;
+  }
+  if (effect === 'loot') {
+    return `+${option.lootCoins ?? 0} 金币`;
+  }
+  return `${option.damage} 伤害`;
 }
 
 export default function AdventurePage() {
@@ -58,6 +61,9 @@ export default function AdventurePage() {
   // Boss 是否已被击败
   const bossDefeated = currentChapter ? storyProgress.defeatedBosses.includes(currentChapter.id) : false;
 
+  // 当前 Boss 的削弱状态
+  const weaken = currentChapter ? storyProgress.bossWeaken?.[currentChapter.id] : undefined;
+
   // 互动处理：消耗金币选择选项
   const handleOption = (optionId: string) => {
     if (!currentChapter || bossDefeated || isAttacking) return;
@@ -70,6 +76,12 @@ export default function AdventurePage() {
 
       if (result.bossDamage > 0) {
         addToast({ icon: '⚔', title: `${result.bossDamage} 点伤害！` });
+      }
+      if (result.weakened) {
+        addToast({ icon: '↓', title: 'Boss 防御已被削弱' });
+      }
+      if (result.coinsGained > 0) {
+        addToast({ icon: '◉', title: `+${result.coinsGained} 金币` });
       }
       if (result.bossDefeated) {
         addToast({ icon: '★', title: `击败了 ${currentChapter.bossName}！` });
@@ -135,6 +147,13 @@ export default function AdventurePage() {
               </div>
               <p className="adventure-boss-hint">完成任务或子任务即可对 Boss 造成伤害，也可消耗金币选择互动选项</p>
 
+              {/* Boss 削弱状态 */}
+              {weaken && weaken.remaining > 0 && (
+                <div className="adventure-boss-weaken">
+                  防御削弱中 · 接下来 {weaken.remaining} 次出手伤害 ×{weaken.multiplier}
+                </div>
+              )}
+
               {/* 金币余额 */}
               <div className="adventure-coins-bar">
                 <IconCoins size={16} color="#ffd93d" />
@@ -145,46 +164,28 @@ export default function AdventurePage() {
               {/* 互动选项按钮 */}
               {!bossDefeated && currentChapter.options && currentChapter.options.length > 0 && (
                 <div className="adventure-options">
-                  {currentChapter.options.map((option, index) => {
-                    const tier = getOptionTier(index);
-                    const tierInfo = OPTION_TIERS[tier];
+                  {currentChapter.options.map(option => {
                     const canAfford = userProfile.coins >= option.cost;
                     const disabled = isAttacking || !canAfford;
+                    const effect = option.effect || 'damage';
                     return (
                       <button
                         key={option.id}
-                        className={`adventure-option-btn tier-${tier} ${disabled ? 'disabled' : ''} ${!canAfford ? 'locked' : ''}`}
+                        className={`adventure-option-btn effect-${effect} ${disabled ? 'disabled' : ''} ${!canAfford ? 'locked' : ''}`}
                         onClick={() => handleOption(option.id)}
                         disabled={disabled}
                       >
-                        {/* 稀有度光效层 */}
-                        <span className="adventure-option-aura" aria-hidden="true" />
-                        {/* 粒子层 */}
-                        {!disabled && (
-                          <span className="adventure-option-particles" aria-hidden="true">
-                            {Array.from({ length: tierInfo.particles }).map((_, i) => (
-                              <span
-                                key={i}
-                                className="adventure-particle"
-                                style={{
-                                  left: `${(i * 37) % 100}%`,
-                                  animationDelay: `${((i * 0.37) % 3).toFixed(2)}s`,
-                                  animationDuration: `${(2.2 + ((i * 0.29) % 1.8)).toFixed(2)}s`,
-                                }}
-                              />
-                            ))}
-                          </span>
-                        )}
-                        <span className="adventure-option-tier-badge">{tierInfo.label}</span>
                         <div className="adventure-option-top">
                           <span className="adventure-option-label">
                             <IconSword size={14} color="#fff" /> {option.label}
                           </span>
-                          <span className="adventure-option-damage">{option.damage} 伤害</span>
+                          <span className="adventure-option-damage">{getOptionTag(option)}</span>
                         </div>
                         <div className="adventure-option-desc">{option.description}</div>
                         <div className="adventure-option-cost">
-                          <IconCoins size={12} color="#ffd93d" /> {option.cost} 金币
+                          <span className="adventure-option-effect">{EFFECT_LABELS[effect]}</span>
+                          <IconCoins size={12} color="#ffd93d" />
+                          {option.cost > 0 ? `${option.cost} 金币` : '免费'}
                         </div>
                       </button>
                     );

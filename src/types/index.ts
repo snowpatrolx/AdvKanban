@@ -22,18 +22,10 @@ export interface Task {
   repeatCount: number;          // 重复次数计数，第N次重复
   parentId: string | null;      // 父任务ID（子任务用）
   archived?: boolean;           // 是否已归档
-  tagIds?: string[];            // 关联的标签
 }
 
 // ===== 分类 =====
 export interface Category {
-  id: string;
-  name: string;
-  color: string;
-}
-
-// ===== 任务标签 =====
-export interface Tag {
   id: string;
   name: string;
   color: string;
@@ -72,13 +64,20 @@ export interface Badge {
   condition: string;  // 用于判定逻辑的 key
 }
 
+// 选项效果：damage=造成伤害, weaken=削弱 Boss（后续出手伤害提升）, loot=获得金币
+export type ChapterEffectType = 'damage' | 'weaken' | 'loot';
+
 // ===== 冒险章节互动选项 =====
 export interface ChapterOption {
   id: string;
   label: string;       // 选项名称
   cost: number;        // 消耗金币
-  damage: number;      // 对 Boss 造成的伤害
+  damage: number;      // 对 Boss 造成的伤害（weaken/loot 为 0）
   description: string; // 选项描述
+  effect?: ChapterEffectType;      // 选项效果，默认 damage
+  weakenMultiplier?: number;       // weaken：后续出手伤害倍数，如 1.5
+  weakenTurns?: number;            // weaken：生效次数
+  lootCoins?: number;              // loot：获得的金币
 }
 
 // ===== 冒险章节 =====
@@ -100,6 +99,7 @@ export interface StoryProgress {
   unlockedChapters: number[];  // 已解锁章节
   bossCurrentHP: Record<number, number>;  // 各章节 Boss 当前 HP
   defeatedBosses: number[];    // 已击败的 Boss 章节 id
+  bossWeaken?: Record<number, { multiplier: number; remaining: number }>;  // Boss 被削弱的剩余出手次数
 }
 
 export interface StoryLog {
@@ -130,7 +130,6 @@ export interface DailyRecord {
 export interface AppData {
   tasks: Task[];
   categories: Category[];
-  tags: Tag[];
   knowledge: Knowledge[];
   notes: Note[];
   userProfile: UserProfile;
