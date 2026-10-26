@@ -16,16 +16,24 @@ const LOG_TYPE_LABELS: Record<LogType, string> = {
 const EFFECT_LABELS: Record<string, string> = {
   damage: '伤害',
   weaken: '削弱',
+  boost: '强化',
   loot: '金币',
+  drain: '掠夺',
 };
 
-function getOptionTag(option: { effect?: string; damage: number; weakenMultiplier?: number; weakenTurns?: number; lootCoins?: number }) {
+function getOptionTag(option: { effect?: string; damage: number; weakenMultiplier?: number; weakenTurns?: number; boostBonus?: number; boostTurns?: number; lootCoins?: number; drainCoins?: number }) {
   const effect = option.effect || 'damage';
   if (effect === 'weaken') {
     return `削弱 ×${option.weakenMultiplier ?? 1.5} / ${option.weakenTurns ?? 3} 次`;
   }
+  if (effect === 'boost') {
+    return `+${option.boostBonus ?? 0} 伤害 / ${option.boostTurns ?? 3} 次`;
+  }
   if (effect === 'loot') {
     return `+${option.lootCoins ?? 0} 金币`;
+  }
+  if (effect === 'drain') {
+    return `${option.damage} 伤害 + ${option.drainCoins ?? 0} 金币`;
   }
   return `${option.damage} 伤害`;
 }
@@ -61,8 +69,11 @@ export default function AdventurePage() {
   // Boss 是否已被击败
   const bossDefeated = currentChapter ? storyProgress.defeatedBosses.includes(currentChapter.id) : false;
 
-  // 当前 Boss 的削弱状态
+  // 当前 Boss 的削弱 / 强化状态
   const weaken = currentChapter ? storyProgress.bossWeaken?.[currentChapter.id] : undefined;
+  const boost = currentChapter ? storyProgress.bossBoost?.[currentChapter.id] : undefined;
+  // 已使用的一次性选项
+  const usedOptions = currentChapter ? (storyProgress.usedOptions?.[currentChapter.id] || []) : [];
 
   // 互动处理：消耗金币选择选项
   const handleOption = (optionId: string) => {
@@ -79,6 +90,9 @@ export default function AdventurePage() {
       }
       if (result.weakened) {
         addToast({ icon: '↓', title: 'Boss 防御已被削弱' });
+      }
+      if (result.boosted) {
+        addToast({ icon: '↑', title: '伤害强化已生效' });
       }
       if (result.coinsGained > 0) {
         addToast({ icon: '◉', title: `+${result.coinsGained} 金币` });
@@ -154,6 +168,13 @@ export default function AdventurePage() {
                 </div>
               )}
 
+              {/* 伤害强化状态 */}
+              {boost && boost.remaining > 0 && (
+                <div className="adventure-boss-boost">
+                  伤害强化中 · 接下来 {boost.remaining} 次出手 +{boost.bonus} 伤害
+                </div>
+              )}
+
               {/* 金币余额 */}
               <div className="adventure-coins-bar">
                 <IconCoins size={16} color="#ffd93d" />
@@ -166,12 +187,13 @@ export default function AdventurePage() {
                 <div className="adventure-options">
                   {currentChapter.options.map(option => {
                     const canAfford = userProfile.coins >= option.cost;
-                    const disabled = isAttacking || !canAfford;
                     const effect = option.effect || 'damage';
+                    const isUsed = effect === 'loot' && usedOptions.includes(option.id);
+                    const disabled = isAttacking || !canAfford || isUsed;
                     return (
                       <button
                         key={option.id}
-                        className={`adventure-option-btn effect-${effect} ${disabled ? 'disabled' : ''} ${!canAfford ? 'locked' : ''}`}
+                        className={`adventure-option-btn effect-${effect} ${disabled ? 'disabled' : ''} ${!canAfford ? 'locked' : ''} ${isUsed ? 'used' : ''}`}
                         onClick={() => handleOption(option.id)}
                         disabled={disabled}
                       >
@@ -179,7 +201,7 @@ export default function AdventurePage() {
                           <span className="adventure-option-label">
                             <IconSword size={14} color="#fff" /> {option.label}
                           </span>
-                          <span className="adventure-option-damage">{getOptionTag(option)}</span>
+                          <span className="adventure-option-damage">{isUsed ? '已使用' : getOptionTag(option)}</span>
                         </div>
                         <div className="adventure-option-desc">{option.description}</div>
                         <div className="adventure-option-cost">

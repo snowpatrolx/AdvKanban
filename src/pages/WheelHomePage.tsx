@@ -55,6 +55,12 @@ export default function WheelHomePage() {
       .sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority) || a.order - b.order);
   }, [tasks]);
 
+  // 首页只展示今日尚未完成的每日任务，已完成的当日每日任务不再显示
+  const pendingDailyTasks = useMemo(
+    () => dailyTasks.filter(t => !(t.completedAt && isToday(t.completedAt))),
+    [dailyTasks],
+  );
+
   // 当日任务（isTaskToday 为真，但排除 daily，因为 daily 已单独展示）
   const todayTasks = useMemo(() => {
     return tasks
@@ -117,18 +123,18 @@ export default function WheelHomePage() {
       {/* 轮盘 */}
       <DailyWheelCard count={todayCompletedCount} />
 
-      {/* 每日任务 */}
+      {/* 当日任务 */}
       <div className="wh-section">
         <div className="wh-section-header">
-          <h3 className="wh-section-title">每日任务</h3>
-          <span className="wh-section-count">{dailyTasks.filter(t => t.completedAt && isToday(t.completedAt)).length}/{dailyTasks.length}</span>
+          <h3 className="wh-section-title">当日任务</h3>
+          <span className="wh-section-count">{todayTasks.length}</span>
         </div>
-        {dailyTasks.length === 0 ? (
+        {todayTasks.length === 0 ? (
           <div className="wh-empty">
-            <p>还没有每日任务，点击右下角按钮添加</p>
+            <p>今天没有其他任务</p>
           </div>
         ) : (
-          dailyTasks.map(t => (
+          todayTasks.map(t => (
             <WheelTaskCard
               key={t.id}
               task={t}
@@ -142,18 +148,22 @@ export default function WheelHomePage() {
         )}
       </div>
 
-      {/* 当日任务 */}
+      {/* 每日任务（当天已完成的每日任务不显示） */}
       <div className="wh-section">
         <div className="wh-section-header">
-          <h3 className="wh-section-title">当日任务</h3>
-          <span className="wh-section-count">{todayTasks.length}</span>
+          <h3 className="wh-section-title">每日任务</h3>
+          <span className="wh-section-count">{pendingDailyTasks.length}/{dailyTasks.length}</span>
         </div>
-        {todayTasks.length === 0 ? (
+        {dailyTasks.length === 0 ? (
           <div className="wh-empty">
-            <p>今天没有其他任务</p>
+            <p>还没有每日任务，点击右下角按钮添加</p>
+          </div>
+        ) : pendingDailyTasks.length === 0 ? (
+          <div className="wh-empty">
+            <p>今日每日任务已全部完成</p>
           </div>
         ) : (
-          todayTasks.map(t => (
+          pendingDailyTasks.map(t => (
             <WheelTaskCard
               key={t.id}
               task={t}

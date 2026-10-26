@@ -64,8 +64,8 @@ export interface Badge {
   condition: string;  // 用于判定逻辑的 key
 }
 
-// 选项效果：damage=造成伤害, weaken=削弱 Boss（后续出手伤害提升）, loot=获得金币
-export type ChapterEffectType = 'damage' | 'weaken' | 'loot';
+// 选项效果：damage=造成伤害, weaken=削弱 Boss（后续出手伤害提升）, boost=强化（后续出手附加伤害）, loot=获得金币, drain=掠夺（造成伤害并获得金币）
+export type ChapterEffectType = 'damage' | 'weaken' | 'boost' | 'loot' | 'drain';
 
 // ===== 冒险章节互动选项 =====
 export interface ChapterOption {
@@ -77,7 +77,10 @@ export interface ChapterOption {
   effect?: ChapterEffectType;      // 选项效果，默认 damage
   weakenMultiplier?: number;       // weaken：后续出手伤害倍数，如 1.5
   weakenTurns?: number;            // weaken：生效次数
+  boostBonus?: number;             // boost：后续每次出手附加的固定伤害
+  boostTurns?: number;             // boost：生效次数
   lootCoins?: number;              // loot：获得的金币
+  drainCoins?: number;             // drain：造成伤害的同时获得的金币
 }
 
 // ===== 冒险章节 =====
@@ -100,6 +103,8 @@ export interface StoryProgress {
   bossCurrentHP: Record<number, number>;  // 各章节 Boss 当前 HP
   defeatedBosses: number[];    // 已击败的 Boss 章节 id
   bossWeaken?: Record<number, { multiplier: number; remaining: number }>;  // Boss 被削弱的剩余出手次数
+  bossBoost?: Record<number, { bonus: number; remaining: number }>;        // Boss 受强化伤害的剩余出手次数
+  usedOptions?: Record<number, string[]>;  // 已使用的一次性选项（如搜刮金币），按章节记录
 }
 
 export interface StoryLog {

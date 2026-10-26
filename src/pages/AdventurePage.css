@@ -283,7 +283,7 @@
   pointer-events: none;
 }
 
-/* 效果类型：用配色区分伤害 / 削弱 / 金币 */
+/* 效果类型：用配色区分伤害 / 削弱 / 强化 / 金币 / 掠夺 */
 .adventure-option-btn.effect-damage {
   background: linear-gradient(135deg, #6c5ce7, #5849b5);
 }
@@ -292,12 +292,21 @@
   background: linear-gradient(135deg, #0984e3, #0652dd);
 }
 
+.adventure-option-btn.effect-boost {
+  background: linear-gradient(135deg, #00b894, #008f72);
+}
+
 .adventure-option-btn.effect-loot {
   background: linear-gradient(135deg, #f0932b, #e67e22);
 }
 
-/* 金币不足时置灰，覆盖效果配色 */
-.adventure-option-btn.locked {
+.adventure-option-btn.effect-drain {
+  background: linear-gradient(135deg, #d63031, #b02323);
+}
+
+/* 金币不足或已使用时置灰，覆盖效果配色 */
+.adventure-option-btn.locked,
+.adventure-option-btn.used {
   background: linear-gradient(135deg, #636e72, #4a5154);
   box-shadow: none;
 }
@@ -321,6 +330,18 @@
   font-size: 12px;
   font-weight: 600;
   color: #0984e3;
+}
+
+/* 伤害强化状态 */
+.adventure-boss-boost {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(0, 184, 148, 0.1);
+  border-left: 3px solid #00b894;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: #00a383;
 }
 
 .adventure-option-top {
