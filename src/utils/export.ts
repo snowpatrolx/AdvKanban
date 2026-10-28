@@ -7,7 +7,11 @@ export function exportTasksToExcel(tasks: Task[], categories: Category[]) {
   const data = tasks.map(t => ({
     '标题': t.title,
     '描述': t.description,
-    '状态': t.status === 'todo' ? '待办' : t.status === 'doing' ? '进行中' : '已完成',
+    '状态': t.status === 'todo' ? '待办'
+      : t.status === 'doing' ? '进行中'
+      : t.status === 'daily' ? '每日'
+      : t.status === 'shopping' ? '购物'
+      : '已完成',
     '优先级': t.priority === 'high' ? '高' : t.priority === 'medium' ? '中' : t.priority === 'low' ? '低' : '无',
     '分类': t.categoryId ? categoryNameMap.get(t.categoryId) || '未分类' : '未分类',
     '截止日期': t.dueDate || '',

@@ -13,7 +13,7 @@ import './ProfilePage.css';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { userProfile, userBadges, tasks, storyProgress, archiveCompletedTasks } = useStore();
+  const { userProfile, userBadges, tasks, storyProgress, archiveCompletedTasks, exchangeCoinsForPoints } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const levelInfo = getLevelProgress(userProfile.totalPoints);
 
@@ -28,6 +28,21 @@ export default function ProfilePage() {
     const count = archiveCompletedTasks();
     addToast({ icon: '▼', title: `已归档 ${count} 个已完成任务` });
   };
+
+  // 金币兑换经验
+  const handleExchange = (coinCost: number, pointsReward: number) => {
+    if (exchangeCoinsForPoints(coinCost, pointsReward)) {
+      addToast({ icon: '◉', title: `兑换成功：+${pointsReward} 经验`, subtitle: `消耗 ${coinCost} 金币` });
+    } else {
+      addToast({ icon: '!', title: '金币不足', subtitle: `需要 ${coinCost} 金币` });
+    }
+  };
+
+  const coinExchangeOptions = [
+    { cost: 50, points: 30 },
+    { cost: 100, points: 70 },
+    { cost: 300, points: 240 },
+  ];
 
   return (
     <div className="page profile-page">
@@ -92,6 +107,36 @@ export default function ProfilePage() {
         <div className="profile-stat-item">
           <span className="profile-stat-num">{tasks.filter(t => !t.parentId && !t.archived).length}</span>
           <span className="profile-stat-label">活跃任务</span>
+        </div>
+      </div>
+
+      {/* 金币商店 */}
+      <div className="card">
+        <div className="profile-section-header">
+          <h3>
+            <IconCoins size={18} color="#ffd93d" /> 金币商店
+          </h3>
+          <span className="profile-level-next">持有 {userProfile.coins} 金币</span>
+        </div>
+        <p className="coin-shop-hint">用金币兑换经验值，加速升级进度</p>
+        <div className="coin-shop-list">
+          {coinExchangeOptions.map(opt => {
+            const affordable = userProfile.coins >= opt.cost;
+            return (
+              <button
+                key={opt.cost}
+                className={`coin-shop-btn ${affordable ? '' : 'disabled'}`}
+                onClick={() => handleExchange(opt.cost, opt.points)}
+                disabled={!affordable}
+              >
+                <span className="coin-shop-cost">
+                  <IconCoins size={15} color="#ffd93d" /> {opt.cost}
+                </span>
+                <IconArrowRight size={14} color="var(--color-text-light)" />
+                <span className="coin-shop-reward">+{opt.points} 经验</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -31,7 +31,7 @@ export default function KanbanPage() {
   );
 
   const tasksByStatus = useMemo(() => {
-    const map: Record<TaskStatus, Task[]> = { todo: [], doing: [], daily: [], done: [] };
+    const map: Record<TaskStatus, Task[]> = { todo: [], doing: [], daily: [], shopping: [], done: [] };
     tasks.forEach(t => map[t.status].push(t));
     Object.values(map).forEach(arr => arr.sort((a, b) => a.order - b.order));
     return map;

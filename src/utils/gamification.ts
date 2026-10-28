@@ -32,6 +32,12 @@ export const LEVELS = [
   { level: 4, name: '能手', minPoints: 600 },
   { level: 5, name: '专家', minPoints: 1000 },
   { level: 6, name: '大师', minPoints: 2000 },
+  { level: 7, name: '宗师', minPoints: 3500 },
+  { level: 8, name: '传奇', minPoints: 5500 },
+  { level: 9, name: '史诗', minPoints: 8000 },
+  { level: 10, name: '神话', minPoints: 11000 },
+  { level: 11, name: '超凡', minPoints: 15000 },
+  { level: 12, name: '至高', minPoints: 20000 },
 ];
 
 export function getLevelByPoints(points: number): { level: number; name: string; minPoints: number } {

@@ -23,6 +23,7 @@ const COLUMNS: { id: TaskStatus; title: string; color: string }[] = [
   { id: 'todo', title: '待办', color: '#6c5ce7' },
   { id: 'doing', title: '进行中', color: '#fdcb6e' },
   { id: 'daily', title: '每日', color: '#00cec9' },
+  { id: 'shopping', title: '购物', color: '#e84393' },
   { id: 'done', title: '已完成', color: '#00b894' },
 ];
 
@@ -65,8 +66,8 @@ export default function HomeKanbanPage() {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
-  // 状态筛选选项顺序：all -> todo -> doing -> daily -> done -> archived
-  const statusOptions: StatusFilter[] = useMemo(() => ['all', 'todo', 'doing', 'daily', 'done', 'archived'], []);
+  // 状态筛选选项顺序：all -> todo -> doing -> daily -> shopping -> done -> archived
+  const statusOptions: StatusFilter[] = useMemo(() => ['all', 'todo', 'doing', 'daily', 'shopping', 'done', 'archived'], []);
 
   // 滑动切换状态
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -170,7 +171,7 @@ export default function HomeKanbanPage() {
         if (filterCategory !== ANY_CATEGORY_ID && t.categoryId === ANY_CATEGORY_ID) return true;
         return t.categoryId === filterCategory;
       });
-    const map: Record<TaskStatus, Task[]> = { todo: [], doing: [], daily: [], done: [] };
+    const map: Record<TaskStatus, Task[]> = { todo: [], doing: [], daily: [], shopping: [], done: [] };
     allFiltered.forEach(t => map[t.status].push(t));
     Object.values(map).forEach(arr => {
       arr.sort((a, b) => {
@@ -547,14 +548,14 @@ export default function HomeKanbanPage() {
           <div className="form-group">
             <label className="form-label">状态</label>
             <div className="quick-status-selector">
-              {(['todo', 'doing', 'daily', 'done'] as TaskStatus[]).map(s => (
+              {(['todo', 'doing', 'daily', 'shopping', 'done'] as TaskStatus[]).map(s => (
                 <button
                   key={s}
                   type="button"
                   className={`quick-status-btn ${quickStatus === s ? 'active' : ''}`}
                   onClick={() => setQuickStatus(s)}
                 >
-                  {s === 'todo' ? '待办' : s === 'doing' ? '进行中' : s === 'daily' ? '每日' : '已完成'}
+                  {s === 'todo' ? '待办' : s === 'doing' ? '进行中' : s === 'daily' ? '每日' : s === 'shopping' ? '购物' : '已完成'}
                 </button>
               ))}
             </div>
@@ -631,7 +632,7 @@ function ListTaskCard({ task, onToggle, onClick, categories, allTasks, onToggleS
       <div className="task-card-body" onClick={onClick}>
         <div className={`task-card-title ${isCompleted ? 'done-text' : ''}`}>
           {task.title}
-          {task.repeat !== 'none' && (
+          {(task.repeat !== 'none' || (task.status === 'daily' && (task.repeatCount || 0) > 0)) && (
             <span className="task-repeat-badge">
               <IconRepeat size={12} color="var(--color-text-light)" />
               <span className="task-repeat-count">{task.repeatCount || 0}</span>
@@ -767,7 +768,7 @@ function KanbanCard({
       <div className="kanban-card-content">
         <div className={`kanban-card-title ${task.status === 'done' ? 'done' : ''}`}>
           {task.title}
-          {task.repeat !== 'none' && (
+          {(task.repeat !== 'none' || (task.status === 'daily' && (task.repeatCount || 0) > 0)) && (
             <span className="task-repeat-badge kanban">
               <IconRepeat size={11} color="var(--color-text-light)" />
               <span className="task-repeat-count">{task.repeatCount || 0}</span>

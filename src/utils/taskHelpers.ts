@@ -25,6 +25,7 @@ export function statusLabel(status: Task['status']): string {
     case 'todo': return '待办';
     case 'doing': return '进行中';
     case 'daily': return '每日';
+    case 'shopping': return '购物';
     case 'done': return '已完成';
   }
 }

@@ -1,5 +1,5 @@
 // ===== 任务相关类型 =====
-export type TaskStatus = 'todo' | 'doing' | 'done' | 'daily';
+export type TaskStatus = 'todo' | 'doing' | 'done' | 'daily' | 'shopping';
 export type TaskPriority = 'high' | 'medium' | 'low' | null;
 export type RepeatType = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'weekdays' | 'workdays' | 'holidays';
 

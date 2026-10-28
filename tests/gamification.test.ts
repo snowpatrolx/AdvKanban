@@ -108,9 +108,21 @@ describe('等级判定', () => {
     expect(result.name).toBe('大师');
   });
 
-  it('超过2000积分仍为 Lv.6', () => {
+  it('超过2000积分为 Lv.7 宗师', () => {
+    const result = getLevelByPoints(3500);
+    expect(result.level).toBe(7);
+    expect(result.name).toBe('宗师');
+  });
+
+  it('20000 积分为 Lv.12 至高', () => {
+    const result = getLevelByPoints(20000);
+    expect(result.level).toBe(12);
+    expect(result.name).toBe('至高');
+  });
+
+  it('超过20000积分仍为 Lv.12', () => {
     const result = getLevelByPoints(99999);
-    expect(result.level).toBe(6);
+    expect(result.level).toBe(12);
   });
 });
 
@@ -129,7 +141,7 @@ describe('等级进度', () => {
   });
 
   it('满级后进度为 100%', () => {
-    const progress = getLevelProgress(2000);
+    const progress = getLevelProgress(20000);
     expect(progress.progress).toBe(100);
     expect(progress.pointsToNext).toBeNull();
   });

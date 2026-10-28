@@ -7,7 +7,7 @@ import { NotesModal } from '../components/common/NotesModal';
 import { BADGES } from '../data/badges';
 import {
   IconPlus, IconCheckCircle, IconCalendar, IconRepeat, IconChevronDown, IconChevronRight,
-  IconSubtask, IconNote, IconFlame, IconCoins,
+  IconSubtask, IconNote, IconFlame, IconCoins, IconCart,
 } from '../components/common/Icons';
 import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor, isTaskToday, getDaysUntilDue, formatDaysUntil } from '../utils/taskHelpers';
 import type { Task, TaskStatus, Category, TaskPriority } from '../types';
@@ -61,10 +61,17 @@ export default function WheelHomePage() {
     [dailyTasks],
   );
 
-  // 当日任务（isTaskToday 为真，但排除 daily，因为 daily 已单独展示）
+  // 当日任务（isTaskToday 为真，但排除 daily/shopping，它们单独展示）
   const todayTasks = useMemo(() => {
     return tasks
-      .filter(t => !t.parentId && !t.archived && isTaskToday(t) && t.status !== 'daily')
+      .filter(t => !t.parentId && !t.archived && isTaskToday(t) && t.status !== 'daily' && t.status !== 'shopping')
+      .sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority) || a.order - b.order);
+  }, [tasks]);
+
+  // 购物任务（status = shopping），未归档
+  const shoppingTasks = useMemo(() => {
+    return tasks
+      .filter(t => !t.parentId && t.status === 'shopping' && !t.archived)
       .sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority) || a.order - b.order);
   }, [tasks]);
 
@@ -177,6 +184,29 @@ export default function WheelHomePage() {
         )}
       </div>
 
+      {/* 购物任务（首页最后） */}
+      {shoppingTasks.length > 0 && (
+        <div className="wh-section">
+          <div className="wh-section-header">
+            <h3 className="wh-section-title">
+              <IconCart size={16} color="#e84393" /> 购物任务
+            </h3>
+            <span className="wh-section-count">{shoppingTasks.length}</span>
+          </div>
+          {shoppingTasks.map(t => (
+            <WheelTaskCard
+              key={t.id}
+              task={t}
+              onToggle={handleToggle}
+              onClick={() => navigate(`/task/${t.id}`)}
+              categories={categories}
+              allTasks={tasks}
+              onToggleSubtask={handleToggleSubtask}
+            />
+          ))}
+        </div>
+      )}
+
       {/* 悬浮按钮 */}
       <button className="fab fab-note" onClick={() => setShowNotes(true)}>
         <IconNote size={22} color="#fff" />
@@ -215,14 +245,14 @@ export default function WheelHomePage() {
           <div className="form-group">
             <label className="form-label">状态</label>
             <div className="quick-status-selector">
-              {(['todo', 'doing', 'daily', 'done'] as TaskStatus[]).map(s => (
+              {(['todo', 'doing', 'daily', 'shopping', 'done'] as TaskStatus[]).map(s => (
                 <button
                   key={s}
                   type="button"
                   className={`quick-status-btn ${quickStatus === s ? 'active' : ''}`}
                   onClick={() => setQuickStatus(s)}
                 >
-                  {s === 'todo' ? '待办' : s === 'doing' ? '进行中' : s === 'daily' ? '每日' : '已完成'}
+                  {s === 'todo' ? '待办' : s === 'doing' ? '进行中' : s === 'daily' ? '每日' : s === 'shopping' ? '购物' : '已完成'}
                 </button>
               ))}
             </div>
@@ -272,7 +302,7 @@ function WheelTaskCard({ task, onToggle, onClick, categories, allTasks, onToggle
       <div className="task-card-body" onClick={onClick}>
         <div className={`task-card-title ${isCompleted ? 'done-text' : ''}`}>
           {task.title}
-          {task.repeat !== 'none' && (
+          {(task.repeat !== 'none' || (task.status === 'daily' && (task.repeatCount || 0) > 0)) && (
             <span className="task-repeat-badge">
               <IconRepeat size={12} color="var(--color-text-light)" />
               <span className="task-repeat-count">{task.repeatCount || 0}</span>

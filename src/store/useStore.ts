@@ -36,7 +36,7 @@ interface StoreState {
   archiveCompletedTasks: () => number;
 
   // 子任务操作
-  addSubtask: (parentId: string, title: string) => string;
+  addSubtask: (parentId: string, title: string, dueDate?: string | null) => string;
   updateSubtask: (id: string, data: Partial<Task>) => void;
   deleteSubtask: (id: string) => void;
   toggleSubtask: (id: string) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
@@ -70,6 +70,7 @@ interface StoreState {
 
   // 金币操作
   spendCoins: (amount: number) => boolean;
+  exchangeCoinsForPoints: (coinCost: number, pointsReward: number) => boolean;
 
   // 互动
   adventureOption: (optionId: string) => { bossDamage: number; message: string; bossDefeated: boolean; cost: number; coinsGained: number; weakened: boolean; boosted: boolean };
@@ -79,7 +80,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.17';
+export const APP_VERSION = '1.18';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -306,7 +307,13 @@ export const useStore = create<StoreState>()(
         const newStatus: TaskStatus = task.status === 'daily' ? 'daily' : 'done';
         let updatedTasks = state.tasks.map(t =>
           t.id === task.id
-            ? { ...t, status: newStatus, completedAt }
+            ? {
+                ...t,
+                status: newStatus,
+                completedAt,
+                // 每日任务每次完成累计重复计数
+                repeatCount: task.status === 'daily' ? (t.repeatCount || 0) + 1 : t.repeatCount,
+              }
             : t
         );
 
@@ -531,7 +538,7 @@ export const useStore = create<StoreState>()(
       },
 
       // ===== 子任务操作 =====
-      addSubtask: (parentId, title) => {
+      addSubtask: (parentId, title, dueDate) => {
         const id = generateId();
         const now = new Date().toISOString();
         const parent = get().tasks.find(t => t.id === parentId);
@@ -543,7 +550,7 @@ export const useStore = create<StoreState>()(
           status: 'todo',
           priority: parent?.priority || null,
           categoryId: parent?.categoryId || null,
-          dueDate: parent?.dueDate || null,
+          dueDate: dueDate !== undefined ? dueDate : (parent?.dueDate || null),
           createdAt: now,
           completedAt: null,
           order: subtaskOrder + 1,
@@ -888,6 +895,23 @@ export const useStore = create<StoreState>()(
         const state = get();
         if (state.userProfile.coins < amount) return false;
         set({ userProfile: { ...state.userProfile, coins: state.userProfile.coins - amount } });
+        return true;
+      },
+
+      // 金币兑换经验（金币用途）
+      exchangeCoinsForPoints: (coinCost, pointsReward) => {
+        const state = get();
+        if (coinCost <= 0 || pointsReward <= 0) return false;
+        if (state.userProfile.coins < coinCost) return false;
+        const newPoints = state.userProfile.totalPoints + pointsReward;
+        set({
+          userProfile: {
+            ...state.userProfile,
+            coins: state.userProfile.coins - coinCost,
+            totalPoints: newPoints,
+            level: getLevelByPoints(newPoints).level,
+          },
+        });
         return true;
       },
 

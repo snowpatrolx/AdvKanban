@@ -241,8 +241,25 @@
 
 .subtask-edit-input {
   flex: 1;
+  min-width: 0;
   padding: 4px 8px;
   font-size: 14px;
+}
+
+.subtask-edit-date {
+  width: 130px;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
+.subtask-due-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--color-text-light);
+  flex-shrink: 0;
 }
 
 .subtask-edit-confirm {
@@ -269,6 +286,14 @@
 
 .subtask-add-input {
   flex: 1;
+  min-width: 0;
+}
+
+.subtask-add-date {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: 13px;
+  padding: 8px;
 }
 
 /* 知识库链接预览 */

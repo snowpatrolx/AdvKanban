@@ -541,6 +541,17 @@ export function IconCoins({ size = 20, color = 'currentColor', className }: Icon
   );
 }
 
+// Shopping cart icon (购物任务)
+export function IconCart({ size = 20, color = 'currentColor', className }: IconProps) {
+  return (
+    <svg {...defaultProps(size, color)} className={className}>
+      <circle cx="9" cy="20" r="1.5" />
+      <circle cx="18" cy="20" r="1.5" />
+      <path d="M2 3h2.5l2.2 11.2a2 2 0 0 0 2 1.6h8.4a2 2 0 0 0 2-1.6L21 7H6" />
+    </svg>
+  );
+}
+
 // Zoom in icon
 export function IconZoomIn({ size = 20, color = 'currentColor', className }: IconProps) {
   return (

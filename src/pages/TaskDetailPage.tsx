@@ -5,8 +5,9 @@ import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
 import { BADGES } from '../data/badges';
 import {
-  IconBack, IconTrash, IconPlus, IconCheckCircle, IconRepeat, IconSubtask, IconCheck, IconEdit,
+  IconBack, IconTrash, IconPlus, IconCheckCircle, IconRepeat, IconSubtask, IconCheck, IconEdit, IconCalendar,
 } from '../components/common/Icons';
+import { formatDate } from '../utils/taskHelpers';
 import type { TaskPriority, TaskStatus, RepeatType } from '../types';
 import './TaskDetailPage.css';
 
@@ -31,8 +32,10 @@ export default function TaskDetailPage() {
   const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>([]);
   const [showDelete, setShowDelete] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [newSubtaskDate, setNewSubtaskDate] = useState('');
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('');
+  const [editingSubtaskDate, setEditingSubtaskDate] = useState('');
 
   // 子任务列表
   const subtasks = !isNew ? tasks.filter(t => t.parentId === id) : [];
@@ -108,27 +111,34 @@ export default function TaskDetailPage() {
 
   const handleAddSubtask = () => {
     if (!newSubtaskTitle.trim() || !id) return;
-    addSubtask(id, newSubtaskTitle.trim());
+    addSubtask(id, newSubtaskTitle.trim(), newSubtaskDate || null);
     setNewSubtaskTitle('');
+    setNewSubtaskDate('');
     addToast({ icon: '✓', title: '子任务已添加' });
   };
 
-  const handleStartEditSubtask = (subtaskId: string, currentTitle: string) => {
+  const handleStartEditSubtask = (subtaskId: string, currentTitle: string, currentDate: string | null) => {
     setEditingSubtaskId(subtaskId);
     setEditingSubtaskTitle(currentTitle);
+    setEditingSubtaskDate(currentDate || '');
   };
 
   const handleSaveEditSubtask = () => {
     if (!editingSubtaskId || !editingSubtaskTitle.trim()) return;
-    updateSubtask(editingSubtaskId, { title: editingSubtaskTitle.trim() });
+    updateSubtask(editingSubtaskId, {
+      title: editingSubtaskTitle.trim(),
+      dueDate: editingSubtaskDate || null,
+    });
     setEditingSubtaskId(null);
     setEditingSubtaskTitle('');
+    setEditingSubtaskDate('');
     addToast({ icon: '✓', title: '子任务已更新' });
   };
 
   const handleCancelEditSubtask = () => {
     setEditingSubtaskId(null);
     setEditingSubtaskTitle('');
+    setEditingSubtaskDate('');
   };
 
   const handleDeleteSubtask = (subtaskId: string) => {
@@ -196,6 +206,7 @@ export default function TaskDetailPage() {
               <option value="todo">待办</option>
               <option value="doing">进行中</option>
               <option value="daily">每日</option>
+              <option value="shopping">购物</option>
               <option value="done">已完成</option>
             </select>
           </div>
@@ -274,9 +285,9 @@ export default function TaskDetailPage() {
           )}
 
           {/* 重复计数 */}
-          {!isNew && repeat !== 'none' && existing && (
+          {!isNew && (repeat !== 'none' || status === 'daily') && existing && (
             <div className="repeat-count-info">
-              <span className="repeat-count-badge">第 {existing.repeatCount || 0} 次</span>
+              <span className="repeat-count-badge">累计 {existing.repeatCount || 0} 次</span>
               <span className="repeat-count-desc">本任务已重复 {existing.repeatCount || 0} 次</span>
             </div>
           )}
@@ -303,6 +314,12 @@ export default function TaskDetailPage() {
                         }}
                         autoFocus
                       />
+                      <input
+                        type="date"
+                        className="form-input subtask-edit-date"
+                        value={editingSubtaskDate}
+                        onChange={e => setEditingSubtaskDate(e.target.value)}
+                      />
                       <button className="btn btn-primary btn-sm subtask-edit-confirm" onClick={handleSaveEditSubtask} disabled={!editingSubtaskTitle.trim()}>
                         <IconCheck size={14} color="#fff" />
                       </button>
@@ -325,7 +342,13 @@ export default function TaskDetailPage() {
                         {st.status === 'done' && <IconCheckCircle size={16} color="var(--color-primary)" />}
                       </span>
                       <span className={`subtask-manage-title ${st.status === 'done' ? 'done-text' : ''}`}>{st.title}</span>
-                      <button className="subtask-action-btn subtask-edit-btn" onClick={() => handleStartEditSubtask(st.id, st.title)}>
+                      {st.dueDate && (
+                        <span className="subtask-due-date">
+                          <IconCalendar size={12} color="var(--color-text-light)" />
+                          {formatDate(st.dueDate)}
+                        </span>
+                      )}
+                      <button className="subtask-action-btn subtask-edit-btn" onClick={() => handleStartEditSubtask(st.id, st.title, st.dueDate)}>
                         <IconEdit size={14} color="var(--color-text-light)" />
                       </button>
                       <button className="subtask-action-btn subtask-delete-btn" onClick={() => handleDeleteSubtask(st.id)}>
@@ -346,6 +369,13 @@ export default function TaskDetailPage() {
                 value={newSubtaskTitle}
                 onChange={e => setNewSubtaskTitle(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddSubtask()}
+              />
+              <input
+                type="date"
+                className="form-input subtask-add-date"
+                value={newSubtaskDate}
+                onChange={e => setNewSubtaskDate(e.target.value)}
+                title="子任务日期"
               />
               <button className="btn btn-primary btn-sm" onClick={handleAddSubtask} disabled={!newSubtaskTitle.trim()}>
                 <IconPlus size={16} color="#fff" />
