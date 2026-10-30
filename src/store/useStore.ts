@@ -28,7 +28,7 @@ interface StoreState {
   addTask: (data: Partial<Task>) => string;
   updateTask: (id: string, data: Partial<Task>) => void;
   deleteTask: (id: string) => void;
-  toggleTaskComplete: (id: string) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
+  toggleTaskComplete: (id: string) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null; wheelCoinsBonus: number; wheelMilestone: number | null };
   reorderTasks: (sourceId: string, targetId: string) => void;
   setTaskStatus: (id: string, status: TaskStatus) => void;
   archiveTask: (id: string) => void;
@@ -70,17 +70,21 @@ interface StoreState {
 
   // 金币操作
   spendCoins: (amount: number) => boolean;
-  exchangeCoinsForPoints: (coinCost: number, pointsReward: number) => boolean;
+  // 金币商店
+  shopBuyStreakShield: () => boolean;  // 购买连续天数护盾
+  shopBuyCoinDouble: () => boolean;    // 购买下一次双倍金币
+  shopBuyBossSmash: () => boolean;     // 购买 Boss 重击（直接造成伤害）
+  shopBuyQuickComplete: () => boolean; // 购买"立即完成一个任务"
 
   // 互动
   adventureOption: (optionId: string) => { bossDamage: number; message: string; bossDefeated: boolean; cost: number; coinsGained: number; weakened: boolean; boosted: boolean };
 
   // 内部
-  _processTaskCompletion: (task: Task) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null };
+  _processTaskCompletion: (task: Task) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null; wheelCoinsBonus: number; wheelMilestone: number | null };
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.18';
+export const APP_VERSION = '1.19';
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -155,6 +159,11 @@ const defaultUserProfile: UserProfile = {
   longestStreak: 0,
   lastCompletedDate: null,
   coins: 0,
+  streakShields: 0,
+  pendingCoinDouble: false,
+  pendingBossDamageBonus: 0,
+  wheelRewardedCount: 0,
+  wheelRewardDate: null,
 };
 
 const defaultStoryProgress: StoryProgress = {
@@ -272,7 +281,7 @@ export const useStore = create<StoreState>()(
 
       toggleTaskComplete: (id) => {
         const task = get().tasks.find(t => t.id === id);
-        if (!task) return { pointsEarned: 0, coinsEarned: 0, newBadges: [], bossDefeated: false, storyUnlocked: null };
+        if (!task) return { pointsEarned: 0, coinsEarned: 0, newBadges: [], bossDefeated: false, storyUnlocked: null, wheelCoinsBonus: 0, wheelMilestone: null };
 
         // 已完成的任务（done 或今日已完成的 daily）取消完成
         if (task.status === 'done' || (task.status === 'daily' && task.completedAt && isToday(task.completedAt))) {
@@ -281,7 +290,7 @@ export const useStore = create<StoreState>()(
               t.id === id ? { ...t, completedAt: null } : t
             ),
           }));
-          return { pointsEarned: 0, coinsEarned: 0, newBadges: [], bossDefeated: false, storyUnlocked: null };
+          return { pointsEarned: 0, coinsEarned: 0, newBadges: [], bossDefeated: false, storyUnlocked: null, wheelCoinsBonus: 0, wheelMilestone: null };
         }
 
         return get()._processTaskCompletion(task);
@@ -296,7 +305,14 @@ export const useStore = create<StoreState>()(
         const { total: pointsEarned } = calculateTaskPoints(task.priority, profile.currentStreak);
 
         // 更新连续天数
-        const newStreak = updateStreak(profile.lastCompletedDate, todayStr, profile.currentStreak);
+        const newStreakRaw = updateStreak(profile.lastCompletedDate, todayStr, profile.currentStreak);
+        // 如果连续天数被重置为 1（说明跨天断签），且有连续天数护盾，则消耗一张护盾保持原天数
+        let newStreak = newStreakRaw;
+        let consumeShield = false;
+        if (newStreakRaw === 1 && profile.currentStreak > 1 && state.userProfile.streakShields > 0) {
+          newStreak = profile.currentStreak + 1; // 保持原来的连续天数并 +1
+          consumeShield = true;
+        }
         const newLongestStreak = Math.max(profile.longestStreak, newStreak);
 
         // 更新每日记录
@@ -333,8 +349,13 @@ export const useStore = create<StoreState>()(
           updatedTasks = [...updatedTasks, newTask];
         }
 
-        // 金币奖励：普通任务 10，高优先级任务 15
-        const coinsEarned = task.priority === 'high' ? 15 : 10;
+        // 金币奖励：普通任务 10，高优先级任务 15；下一次双倍 buff 生效
+        let coinsEarned = task.priority === 'high' ? 15 : 10;
+        let consumeCoinDouble = false;
+        if (state.userProfile.pendingCoinDouble) {
+          coinsEarned *= 2;
+          consumeCoinDouble = true;
+        }
 
         // 更新用户资料
         const newCompletedCount = profile.completedTaskCount + 1;
@@ -342,7 +363,48 @@ export const useStore = create<StoreState>()(
         const newLevel = getLevelByPoints(newTotalPoints).level;
         const newCoins = profile.coins + coinsEarned;
 
-        // Boss 战逻辑
+        let newProfileState: UserProfile = {
+          ...profile,
+          totalPoints: newTotalPoints,
+          level: newLevel,
+          completedTaskCount: newCompletedCount,
+          currentStreak: newStreak,
+          longestStreak: newLongestStreak,
+          lastCompletedDate: todayStr,
+          coins: newCoins,
+        };
+        if (consumeCoinDouble) newProfileState.pendingCoinDouble = false;
+        if (consumeShield) newProfileState.streakShields = Math.max(0, profile.streakShields - 1);
+
+        // 轮盘节点奖励：每天 0 点重置，在 4/8/12 个任务完成时发放金币和护盾
+        let wheelCoinsBonus = 0;
+        let wheelShieldBonus = 0;
+        let wheelCoinDoubleBonus = false;
+        // 今天完成的任务数（包含刚刚完成的）
+        const todayDoneCount =
+          state.tasks.filter(t => t.status === 'done' && isToday(t.completedAt)).length +
+          state.tasks.filter(t => t.status === 'daily' && t.completedAt && isToday(t.completedAt)).length + 1;
+        const milestones = [4, 8, 12];
+        const milestoneCoinRewards: Record<number, number> = { 4: 15, 8: 30, 12: 50 };
+        // 如果不是今天的轮盘，重置已奖励计数
+        const alreadyClaimed = (newProfileState.wheelRewardDate === todayStr)
+          ? (newProfileState.wheelRewardedCount || 0)
+          : 0;
+        let newClaimed = alreadyClaimed;
+        for (let i = alreadyClaimed; i < milestones.length; i++) {
+          if (todayDoneCount >= milestones[i]) {
+            wheelCoinsBonus += milestoneCoinRewards[milestones[i]] || 0;
+            newClaimed = i + 1;
+            if (milestones[i] === 8) wheelCoinDoubleBonus = true;
+            if (milestones[i] === 12) wheelShieldBonus += 1;
+          }
+        }
+        newProfileState.coins += wheelCoinsBonus;
+        newProfileState.wheelRewardedCount = newClaimed;
+        newProfileState.wheelRewardDate = todayStr;
+        if (wheelCoinDoubleBonus) newProfileState.pendingCoinDouble = true;
+        if (wheelShieldBonus > 0) newProfileState.streakShields = (newProfileState.streakShields || 0) + wheelShieldBonus;
+        const highestMilestoneCrossed = newClaimed > alreadyClaimed ? milestones[newClaimed - 1] : null;
         let bossDefeated = false;
         let storyUnlocked: number | null = null;
         const newStoryProgress = { ...state.storyProgress };
@@ -448,17 +510,6 @@ export const useStore = create<StoreState>()(
           }
         }
 
-        const newProfile: UserProfile = {
-          ...profile,
-          totalPoints: newTotalPoints,
-          level: newLevel,
-          completedTaskCount: newCompletedCount,
-          currentStreak: newStreak,
-          longestStreak: newLongestStreak,
-          lastCompletedDate: todayStr,
-          coins: newCoins,
-        };
-
         const storyComplete = newStoryProgress.defeatedBosses.length === CHAPTERS.filter(c => c.bossName).length
           && CHAPTERS.every(c => newStoryProgress.unlockedChapters.includes(c.id));
         const newBadges = checkAllBadges(state.userBadges, {
@@ -471,14 +522,14 @@ export const useStore = create<StoreState>()(
 
         set({
           tasks: updatedTasks,
-          userProfile: newProfile,
+          userProfile: newProfileState,
           dailyRecords: newDailyRecords,
           storyProgress: newStoryProgress,
           storyLogs: newStoryLogs,
           userBadges: [...state.userBadges, ...newBadges],
         });
 
-        return { pointsEarned, coinsEarned, newBadges, bossDefeated, storyUnlocked };
+        return { pointsEarned, coinsEarned, newBadges, bossDefeated, storyUnlocked, wheelCoinsBonus, wheelMilestone: highestMilestoneCrossed };
       },
 
       reorderTasks: (sourceId, targetId) => {
@@ -898,20 +949,116 @@ export const useStore = create<StoreState>()(
         return true;
       },
 
-      // 金币兑换经验（金币用途）
-      exchangeCoinsForPoints: (coinCost, pointsReward) => {
+      // 金币商店：连续天数护盾
+      shopBuyStreakShield: () => {
         const state = get();
-        if (coinCost <= 0 || pointsReward <= 0) return false;
-        if (state.userProfile.coins < coinCost) return false;
-        const newPoints = state.userProfile.totalPoints + pointsReward;
+        const COST = 50;
+        if (state.userProfile.coins < COST) return false;
         set({
           userProfile: {
             ...state.userProfile,
-            coins: state.userProfile.coins - coinCost,
-            totalPoints: newPoints,
-            level: getLevelByPoints(newPoints).level,
+            coins: state.userProfile.coins - COST,
+            streakShields: state.userProfile.streakShields + 1,
           },
         });
+        return true;
+      },
+
+      // 金币商店：下一次任务双倍金币
+      shopBuyCoinDouble: () => {
+        const state = get();
+        const COST = 30;
+        if (state.userProfile.coins < COST) return false;
+        if (state.userProfile.pendingCoinDouble) return false;
+        set({
+          userProfile: {
+            ...state.userProfile,
+            coins: state.userProfile.coins - COST,
+            pendingCoinDouble: true,
+          },
+        });
+        return true;
+      },
+
+      // 金币商店：Boss 重击（直接造成 30 伤害）
+      shopBuyBossSmash: () => {
+        const state = get();
+        const COST = 100;
+        if (state.userProfile.coins < COST) return false;
+        const currentChapter = CHAPTERS.find(c => c.id === state.storyProgress.currentChapter);
+        if (!currentChapter || !currentChapter.bossName) return false;
+        if (state.storyProgress.defeatedBosses.includes(currentChapter.id)) return false;
+
+        const BOSS_DAMAGE = 30;
+        const bossMaxHP = currentChapter.bossHP;
+        const currentHP = state.storyProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
+        const buffed = applyBossBuffs(state.storyProgress, currentChapter.id, BOSS_DAMAGE);
+        const result = calculateBossDamage(bossMaxHP, currentHP, buffed.damage);
+
+        const newStoryProgress = { ...state.storyProgress };
+        newStoryProgress.bossWeaken = buffed.bossWeaken;
+        newStoryProgress.bossBoost = buffed.bossBoost;
+        newStoryProgress.bossCurrentHP = {
+          ...newStoryProgress.bossCurrentHP,
+          [currentChapter.id]: result.remainingHP,
+        };
+
+        const newStoryLogs = [...state.storyLogs];
+        newStoryLogs.push(createLog(
+          currentChapter.id,
+          `你购买了 Boss 重击，对${currentChapter.bossName}造成 ${buffed.damage} 点伤害！`,
+          'damage',
+        ));
+
+        let bossDefeated = false;
+        let storyUnlocked: number | null = null;
+        if (result.isDefeated) {
+          bossDefeated = true;
+          newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, currentChapter.id];
+          newStoryLogs.push(createLog(
+            currentChapter.id,
+            currentChapter.bossDefeatedText,
+            'story',
+          ));
+          const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
+          if (nextChapter) {
+            newStoryProgress.currentChapter = nextChapter.id;
+            newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
+            storyUnlocked = nextChapter.id;
+            newStoryLogs.push(createLog(
+              nextChapter.id,
+              nextChapter.storyText,
+              'story',
+            ));
+          }
+        }
+
+        set({
+          userProfile: { ...state.userProfile, coins: state.userProfile.coins - COST },
+          storyProgress: newStoryProgress,
+          storyLogs: newStoryLogs,
+        });
+        return true;
+      },
+
+      // 金币商店：立即完成一个任务（完成优先级最高的 todo/doing 非每日主任务）
+      shopBuyQuickComplete: () => {
+        const state = get();
+        const COST = 200;
+        if (state.userProfile.coins < COST) return false;
+        // 找一个 todo/doing 非 daily/shopping 的主任务
+        const candidates = state.tasks.filter((t: Task) =>
+          !t.parentId && !t.archived && (t.status === 'todo' || t.status === 'doing')
+        );
+        if (candidates.length === 0) return false;
+        const task = [...candidates].sort((a, b) => {
+          const pa = a.priority === 'high' ? 0 : a.priority === 'medium' ? 1 : 2;
+          const pb = b.priority === 'high' ? 0 : b.priority === 'medium' ? 1 : 2;
+          if (pa !== pb) return pa - pb;
+          return a.order - b.order;
+        })[0];
+        set({ userProfile: { ...state.userProfile, coins: state.userProfile.coins - COST } });
+        get()._processTaskCompletion(task);
         return true;
       },
 
@@ -1049,7 +1196,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'quest-planner-storage',
-      version: 10,
+      version: 11,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
@@ -1157,6 +1304,18 @@ export const useStore = create<StoreState>()(
               ...progress,
               bossBoost: progress.bossBoost || {},
               usedOptions: progress.usedOptions || {},
+            };
+          }
+        }
+
+        // v10 -> v11: 新增金币商店相关 userProfile 字段
+        if (version < 11) {
+          if (state.userProfile) {
+            state.userProfile = {
+              ...state.userProfile,
+              streakShields: 0,
+              pendingCoinDouble: false,
+              pendingBossDamageBonus: 0,
             };
           }
         }

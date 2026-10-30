@@ -53,6 +53,11 @@ export interface UserProfile {
   longestStreak: number;
   lastCompletedDate: string | null;  // YYYY-MM-DD
   coins: number;                    // 金币（用于冒险章节互动选项）
+  streakShields: number;            // 连续天数护盾数量（次日未完成不扣天数）
+  pendingCoinDouble: boolean;       // 下一次任务完成是否双倍金币
+  pendingBossDamageBonus: number;   // 下一次对 Boss 攻击额外附加的伤害
+  wheelRewardedCount: number;       // 今日轮盘已奖励的节点数（每天重置）
+  wheelRewardDate: string | null;   // 轮盘奖励最后结算的日期 YYYY-MM-DD
 }
 
 // ===== 徽章 =====

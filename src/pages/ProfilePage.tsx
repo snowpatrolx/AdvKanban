@@ -13,7 +13,7 @@ import './ProfilePage.css';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { userProfile, userBadges, tasks, storyProgress, archiveCompletedTasks, exchangeCoinsForPoints } = useStore();
+  const { userProfile, userBadges, tasks, storyProgress, archiveCompletedTasks, shopBuyStreakShield, shopBuyCoinDouble, shopBuyBossSmash, shopBuyQuickComplete } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const levelInfo = getLevelProgress(userProfile.totalPoints);
 
@@ -29,20 +29,37 @@ export default function ProfilePage() {
     addToast({ icon: '▼', title: `已归档 ${count} 个已完成任务` });
   };
 
-  // 金币兑换经验
-  const handleExchange = (coinCost: number, pointsReward: number) => {
-    if (exchangeCoinsForPoints(coinCost, pointsReward)) {
-      addToast({ icon: '◉', title: `兑换成功：+${pointsReward} 经验`, subtitle: `消耗 ${coinCost} 金币` });
+  // 金币商店购买
+  const handleBuyStreakShield = () => {
+    if (shopBuyStreakShield()) {
+      addToast({ icon: '◉', title: '购买成功：连续天数护盾', subtitle: '下次断签自动保持' });
     } else {
-      addToast({ icon: '!', title: '金币不足', subtitle: `需要 ${coinCost} 金币` });
+      addToast({ icon: '!', title: '金币不足', subtitle: '需要 50 金币' });
     }
   };
-
-  const coinExchangeOptions = [
-    { cost: 50, points: 30 },
-    { cost: 100, points: 70 },
-    { cost: 300, points: 240 },
-  ];
+  const handleBuyCoinDouble = () => {
+    if (shopBuyCoinDouble()) {
+      addToast({ icon: '◉', title: '购买成功：双倍金币', subtitle: '下一次任务生效' });
+    } else if (userProfile.pendingCoinDouble) {
+      addToast({ icon: '!', title: '已有双倍金币待生效' });
+    } else {
+      addToast({ icon: '!', title: '金币不足', subtitle: '需要 30 金币' });
+    }
+  };
+  const handleBuyBossSmash = () => {
+    if (shopBuyBossSmash()) {
+      addToast({ icon: '⚔', title: '购买成功：Boss 重击', subtitle: '对当前 Boss 造成 30 伤害' });
+    } else {
+      addToast({ icon: '!', title: '无法购买', subtitle: '需要 100 金币 & 当前有未击败的 Boss' });
+    }
+  };
+  const handleBuyQuickComplete = () => {
+    if (shopBuyQuickComplete()) {
+      addToast({ icon: '★', title: '购买成功：立即完成任务', subtitle: '自动完成一个待办任务' });
+    } else {
+      addToast({ icon: '!', title: '无法购买', subtitle: '需要 200 金币 & 有待办任务' });
+    }
+  };
 
   return (
     <div className="page profile-page">
@@ -118,26 +135,44 @@ export default function ProfilePage() {
           </h3>
           <span className="profile-level-next">持有 {userProfile.coins} 金币</span>
         </div>
-        <p className="coin-shop-hint">用金币兑换经验值，加速升级进度</p>
         <div className="coin-shop-list">
-          {coinExchangeOptions.map(opt => {
-            const affordable = userProfile.coins >= opt.cost;
-            return (
-              <button
-                key={opt.cost}
-                className={`coin-shop-btn ${affordable ? '' : 'disabled'}`}
-                onClick={() => handleExchange(opt.cost, opt.points)}
-                disabled={!affordable}
-              >
-                <span className="coin-shop-cost">
-                  <IconCoins size={15} color="#ffd93d" /> {opt.cost}
-                </span>
-                <IconArrowRight size={14} color="var(--color-text-light)" />
-                <span className="coin-shop-reward">+{opt.points} 经验</span>
-              </button>
-            );
-          })}
+          <button className={`coin-shop-btn ${userProfile.coins < 50 ? 'disabled' : ''}`} onClick={handleBuyStreakShield} disabled={userProfile.coins < 50}>
+            <div className="coin-shop-info">
+              <span className="coin-shop-name">🛡 连续天数护盾</span>
+              <span className="coin-shop-desc">下次断签自动保持天数</span>
+            </div>
+            <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> 50</span>
+          </button>
+
+          <button className={`coin-shop-btn ${userProfile.coins < 30 || userProfile.pendingCoinDouble ? 'disabled' : ''}`} onClick={handleBuyCoinDouble} disabled={userProfile.coins < 30 || userProfile.pendingCoinDouble}>
+            <div className="coin-shop-info">
+              <span className="coin-shop-name">✦ 双倍金币券 {userProfile.pendingCoinDouble ? '(生效中)' : ''}</span>
+              <span className="coin-shop-desc">下一次完成任务金币翻倍</span>
+            </div>
+            <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> 30</span>
+          </button>
+
+          <button className={`coin-shop-btn ${userProfile.coins < 100 ? 'disabled' : ''}`} onClick={handleBuyBossSmash} disabled={userProfile.coins < 100}>
+            <div className="coin-shop-info">
+              <span className="coin-shop-name">⚔ Boss 重击</span>
+              <span className="coin-shop-desc">对当前 Boss 直接造成 30 伤害</span>
+            </div>
+            <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> 100</span>
+          </button>
+
+          <button className={`coin-shop-btn ${userProfile.coins < 200 ? 'disabled' : ''}`} onClick={handleBuyQuickComplete} disabled={userProfile.coins < 200}>
+            <div className="coin-shop-info">
+              <span className="coin-shop-name">⚡ 任务加速</span>
+              <span className="coin-shop-desc">立即完成一个最高优先级任务</span>
+            </div>
+            <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> 200</span>
+          </button>
         </div>
+        {userProfile.streakShields > 0 && (
+          <div className="coin-shop-buff">
+            🛡 护盾 × {userProfile.streakShields}
+          </div>
+        )}
       </div>
 
       {/* 徽章 */}

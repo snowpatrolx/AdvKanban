@@ -101,6 +101,15 @@ export default function WheelHomePage() {
     });
     if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });
     if (result.storyUnlocked && result.storyUnlocked > 0) addToast({ icon: '◆', title: '新章节已解锁！' });
+    if (result.wheelMilestone !== null) {
+      const msgs: Record<number, { title: string; subtitle: string }> = {
+        4: { title: '🎯 轮盘节点：4/12', subtitle: '奖励 +15 金币' },
+        8: { title: '🎯 轮盘节点：8/12', subtitle: '奖励 +30 金币 + 双倍金币券' },
+        12: { title: '🏆 轮盘满格！', subtitle: '奖励 +50 金币 + 连续天数护盾' },
+      };
+      const m = msgs[result.wheelMilestone];
+      if (m) addToast({ icon: '🎯', title: m.title, subtitle: m.subtitle });
+    }
   };
 
   const handleToggleSubtask = (id: string) => {

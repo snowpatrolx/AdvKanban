@@ -301,9 +301,9 @@ export default function TaskDetailPage() {
             </label>
             <div className="subtask-manage-list">
               {subtasks.map(st => (
-                <div key={st.id} className="subtask-manage-item">
+                <div key={st.id} className={`subtask-manage-item ${editingSubtaskId === st.id ? 'editing' : ''}`}>
                   {editingSubtaskId === st.id ? (
-                    <>
+                    <div className="subtask-edit-row">
                       <input
                         className="form-input subtask-edit-input"
                         value={editingSubtaskTitle}
@@ -326,7 +326,7 @@ export default function TaskDetailPage() {
                       <button className="btn btn-secondary btn-sm subtask-edit-cancel" onClick={handleCancelEditSubtask}>
                         取消
                       </button>
-                    </>
+                    </div>
                   ) : (
                     <>
                       <span className={`subtask-check ${st.status === 'done' ? 'done' : ''}`} onClick={() => {

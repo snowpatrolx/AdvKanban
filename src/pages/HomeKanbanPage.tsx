@@ -216,6 +216,10 @@ export default function HomeKanbanPage() {
     if (result.storyUnlocked && result.storyUnlocked > 0) {
       addToast({ icon: '◆', title: '新章节已解锁！' });
     }
+    if (result.wheelMilestone !== null) {
+      const msgs: Record<number, string> = { 4: '轮盘节点 +15 金币', 8: '轮盘节点 +30 金币', 12: '轮盘满格 +50 金币' };
+      addToast({ icon: '🎯', title: msgs[result.wheelMilestone] || '轮盘节点奖励' });
+    }
   };
 
   const handleToggleSubtask = (id: string) => {

@@ -12,6 +12,7 @@ import DailyStatsPage from './pages/DailyStatsPage';
 import TaskDetailPage from './pages/TaskDetailPage';
 import CategoryManagePage from './pages/CategoryManagePage';
 import DataManagePage from './pages/DataManagePage';
+import NotesPage from './pages/NotesPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -50,7 +51,7 @@ function DailyResetWatcher() {
 
 function Layout() {
   const { pathname } = useLocation();
-  const showNav = ['/', '/kanban', '/stats', '/adventure', '/ai', '/profile'].includes(pathname);
+  const showNav = ['/', '/kanban', '/notes', '/stats', '/adventure', '/ai', '/profile'].includes(pathname);
 
   return (
     <>
@@ -67,6 +68,7 @@ function Layout() {
         <Route path="/task/new" element={<TaskDetailPage />} />
         <Route path="/categories" element={<CategoryManagePage />} />
         <Route path="/data" element={<DataManagePage />} />
+        <Route path="/notes" element={<NotesPage />} />
       </Routes>
       {showNav && <BottomNav />}
       <ToastContainer />

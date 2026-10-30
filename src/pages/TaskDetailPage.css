@@ -201,11 +201,25 @@
   padding: 8px 10px;
   background: var(--color-bg);
   border-radius: var(--radius-sm);
+  flex-wrap: wrap;
 }
 
 .subtask-manage-item .subtask-check {
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.subtask-manage-item.editing {
+  gap: 6px;
+  padding: 10px;
+}
+
+.subtask-manage-item.editing .subtask-edit-row {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .subtask-manage-title {
@@ -242,15 +256,17 @@
 .subtask-edit-input {
   flex: 1;
   min-width: 0;
-  padding: 4px 8px;
+  min-height: 32px;
+  padding: 6px 8px;
   font-size: 14px;
 }
 
 .subtask-edit-date {
-  width: 130px;
+  width: 140px;
   flex-shrink: 0;
-  padding: 4px 8px;
+  padding: 6px 8px;
   font-size: 13px;
+  min-height: 32px;
 }
 
 .subtask-due-date {
@@ -282,6 +298,8 @@
 .subtask-add-row {
   display: flex;
   gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .subtask-add-input {
@@ -290,7 +308,7 @@
 }
 
 .subtask-add-date {
-  width: 130px;
+  width: 140px;
   flex-shrink: 0;
   font-size: 13px;
   padding: 8px;
