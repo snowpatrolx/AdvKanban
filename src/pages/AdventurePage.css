@@ -615,3 +615,166 @@
   line-height: 1.5;
   color: var(--color-text);
 }
+
+/* ===== 家园农田 ===== */
+.adventure-farm-card {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.adventure-farm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.adventure-farm-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.adventure-farm-hint {
+  font-size: 11px;
+  color: var(--color-text-light);
+}
+
+.adventure-farm-plots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.farm-plot {
+  background: var(--color-bg);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 116px;
+}
+
+.farm-plot.planted {
+  border-style: solid;
+  background: linear-gradient(180deg, rgba(0, 184, 148, 0.08), var(--color-bg));
+}
+
+.farm-plot.ready {
+  border-color: #00b894;
+  box-shadow: 0 0 0 2px rgba(0, 184, 148, 0.16);
+  animation: farmReadyPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes farmReadyPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(0, 184, 148, 0.1); }
+  50% { box-shadow: 0 0 0 5px rgba(0, 184, 148, 0.22); }
+}
+
+.farm-plot-empty {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-light);
+  text-align: center;
+  padding: 4px 0;
+}
+
+.farm-plant-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.farm-plant-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  cursor: pointer;
+  text-align: left;
+}
+
+.farm-plant-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.farm-plant-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.farm-plant-cost {
+  font-size: 9.5px;
+  color: var(--color-text-light);
+}
+
+.farm-plot-crop {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.farm-plot-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.farm-plot-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.farm-plot-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.farm-plot-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #00b894, #55efc4);
+  transition: width 0.4s ease;
+}
+
+.farm-plot-meta {
+  font-size: 10px;
+  color: var(--color-text-light);
+}
+
+.farm-harvest-btn {
+  margin-top: auto;
+  padding: 5px 6px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #00b894, #00cec9);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.farm-harvest-btn:disabled {
+  background: var(--color-border);
+  color: var(--color-text-light);
+  cursor: not-allowed;
+}

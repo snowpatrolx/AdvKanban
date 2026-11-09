@@ -136,6 +136,29 @@ export interface DailyRecord {
   pointsEarned: number;
 }
 
+// ===== 金币商店 =====
+export type ShopEffect = 'streakShield' | 'coinDouble' | 'bossSmash' | 'quickComplete';
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  desc: string;
+  cost: number;
+  icon: string;       // 展示用 emoji
+  effect: ShopEffect; // 实际效果
+  enabled: boolean;
+}
+
+// ===== 家园农田 =====
+export interface FarmPlot {
+  id: number;
+  crop: string | null; // 作物 key，null 表示空地
+  progress: number;    // 已积累的任务数
+  required: number;    // 成熟所需任务数
+  cost: number;        // 种子花费
+  reward: number;      // 收获金币
+}
+
 // ===== Store 完整状态 =====
 export interface AppData {
   tasks: Task[];
@@ -147,4 +170,6 @@ export interface AppData {
   dailyRecords: DailyRecord[];
   storyProgress: StoryProgress;
   storyLogs: StoryLog[];
+  shopItems: ShopItem[];
+  farm: FarmPlot[];
 }

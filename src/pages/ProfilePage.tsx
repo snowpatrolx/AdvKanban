@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore, APP_VERSION } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { getLevelProgress, LEVELS } from '../utils/gamification';
 import { BADGES } from '../data/badges';
-import { CHAPTERS } from '../data/chapters';
+import type { ShopEffect } from '../types';
 import {
   IconFlame, IconTag, IconDatabase, IconArrowRight, IconTrophy, IconCheck,
   IconSeedling, IconStarBadge, IconGem, IconEdit, IconBooks, IconDragon, IconAI,
@@ -11,11 +12,22 @@ import {
 } from '../components/common/Icons';
 import './ProfilePage.css';
 
+const SHOP_EFFECT_OPTIONS: { value: ShopEffect; label: string }[] = [
+  { value: 'streakShield', label: '连续天数护盾' },
+  { value: 'coinDouble', label: '双倍金币券' },
+  { value: 'bossSmash', label: 'Boss 重击' },
+  { value: 'quickComplete', label: '任务加速' },
+];
+
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { userProfile, userBadges, tasks, storyProgress, archiveCompletedTasks, shopBuyStreakShield, shopBuyCoinDouble, shopBuyBossSmash, shopBuyQuickComplete } = useStore();
+  const {
+    userProfile, userBadges, tasks, archiveCompletedTasks,
+    shopItems, buyShopItem, updateShopItem, addShopItem, deleteShopItem, resetShopItems,
+  } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const levelInfo = getLevelProgress(userProfile.totalPoints);
+  const [editingShop, setEditingShop] = useState(false);
 
   // 可批量归档的已完成任务数量
   const archiveableCount = tasks.filter(t => !t.parentId && t.status === 'done' && !t.archived).length;
@@ -30,35 +42,23 @@ export default function ProfilePage() {
   };
 
   // 金币商店购买
-  const handleBuyStreakShield = () => {
-    if (shopBuyStreakShield()) {
-      addToast({ icon: '◉', title: '购买成功：连续天数护盾', subtitle: '下次断签自动保持' });
+  const handleBuy = (itemId: string) => {
+    if (buyShopItem(itemId)) {
+      addToast({ icon: '◉', title: '购买成功', subtitle: '效果已生效' });
     } else {
-      addToast({ icon: '!', title: '金币不足', subtitle: '需要 50 金币' });
+      addToast({ icon: '!', title: '无法购买', subtitle: '金币不足或条件不满足' });
     }
   };
-  const handleBuyCoinDouble = () => {
-    if (shopBuyCoinDouble()) {
-      addToast({ icon: '◉', title: '购买成功：双倍金币', subtitle: '下一次任务生效' });
-    } else if (userProfile.pendingCoinDouble) {
-      addToast({ icon: '!', title: '已有双倍金币待生效' });
-    } else {
-      addToast({ icon: '!', title: '金币不足', subtitle: '需要 30 金币' });
-    }
-  };
-  const handleBuyBossSmash = () => {
-    if (shopBuyBossSmash()) {
-      addToast({ icon: '⚔', title: '购买成功：Boss 重击', subtitle: '对当前 Boss 造成 30 伤害' });
-    } else {
-      addToast({ icon: '!', title: '无法购买', subtitle: '需要 100 金币 & 当前有未击败的 Boss' });
-    }
-  };
-  const handleBuyQuickComplete = () => {
-    if (shopBuyQuickComplete()) {
-      addToast({ icon: '★', title: '购买成功：立即完成任务', subtitle: '自动完成一个待办任务' });
-    } else {
-      addToast({ icon: '!', title: '无法购买', subtitle: '需要 200 金币 & 有待办任务' });
-    }
+
+  const handleAddShopItem = () => {
+    addShopItem({
+      name: '新商品',
+      desc: '点击编辑商品描述',
+      cost: 50,
+      icon: '🎁',
+      effect: 'streakShield',
+      enabled: true,
+    });
   };
 
   return (
@@ -133,41 +133,101 @@ export default function ProfilePage() {
           <h3>
             <IconCoins size={18} color="#ffd93d" /> 金币商店
           </h3>
-          <span className="profile-level-next">持有 {userProfile.coins} 金币</span>
+          <div className="coin-shop-header-actions">
+            <span className="profile-level-next">持有 {userProfile.coins} 金币</span>
+            <button
+              className={`coin-shop-edit-toggle ${editingShop ? 'active' : ''}`}
+              onClick={() => setEditingShop(v => !v)}
+            >
+              {editingShop ? '完成' : '编辑'}
+            </button>
+          </div>
         </div>
-        <div className="coin-shop-list">
-          <button className={`coin-shop-btn ${userProfile.coins < 50 ? 'disabled' : ''}`} onClick={handleBuyStreakShield} disabled={userProfile.coins < 50}>
-            <div className="coin-shop-info">
-              <span className="coin-shop-name">🛡 连续天数护盾</span>
-              <span className="coin-shop-desc">下次断签自动保持天数</span>
-            </div>
-            <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> 50</span>
-          </button>
 
-          <button className={`coin-shop-btn ${userProfile.coins < 30 || userProfile.pendingCoinDouble ? 'disabled' : ''}`} onClick={handleBuyCoinDouble} disabled={userProfile.coins < 30 || userProfile.pendingCoinDouble}>
-            <div className="coin-shop-info">
-              <span className="coin-shop-name">✦ 双倍金币券 {userProfile.pendingCoinDouble ? '(生效中)' : ''}</span>
-              <span className="coin-shop-desc">下一次完成任务金币翻倍</span>
+        {editingShop ? (
+          <div className="coin-shop-edit-list">
+            {shopItems.map(item => (
+              <div key={item.id} className="coin-shop-edit-row">
+                <div className="coin-shop-edit-main">
+                  <input
+                    className="coin-shop-input coin-shop-input-icon"
+                    value={item.icon}
+                    maxLength={2}
+                    onChange={e => updateShopItem(item.id, { icon: e.target.value })}
+                  />
+                  <input
+                    className="coin-shop-input coin-shop-input-name"
+                    value={item.name}
+                    onChange={e => updateShopItem(item.id, { name: e.target.value })}
+                    placeholder="商品名称"
+                  />
+                  <input
+                    className="coin-shop-input coin-shop-input-cost"
+                    type="number"
+                    min={0}
+                    value={item.cost}
+                    onChange={e => updateShopItem(item.id, { cost: Math.max(0, Number(e.target.value) || 0) })}
+                  />
+                </div>
+                <input
+                  className="coin-shop-input coin-shop-input-desc"
+                  value={item.desc}
+                  onChange={e => updateShopItem(item.id, { desc: e.target.value })}
+                  placeholder="商品描述"
+                />
+                <div className="coin-shop-edit-footer">
+                  <select
+                    className="coin-shop-select"
+                    value={item.effect}
+                    onChange={e => updateShopItem(item.id, { effect: e.target.value as ShopEffect })}
+                  >
+                    {SHOP_EFFECT_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <label className="coin-shop-enable">
+                    <input
+                      type="checkbox"
+                      checked={item.enabled}
+                      onChange={e => updateShopItem(item.id, { enabled: e.target.checked })}
+                    />
+                    上架
+                  </label>
+                  <button className="coin-shop-delete" onClick={() => deleteShopItem(item.id)}>删除</button>
+                </div>
+              </div>
+            ))}
+            <div className="coin-shop-edit-actions">
+              <button className="coin-shop-add" onClick={handleAddShopItem}>+ 新增商品</button>
+              <button className="coin-shop-reset" onClick={resetShopItems}>恢复默认</button>
             </div>
-            <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> 30</span>
-          </button>
+          </div>
+        ) : (
+          <div className="coin-shop-list">
+            {shopItems.filter(item => item.enabled).map(item => {
+              const isDoubleActive = item.effect === 'coinDouble' && userProfile.pendingCoinDouble;
+              const disabled = userProfile.coins < item.cost || isDoubleActive;
+              return (
+                <button
+                  key={item.id}
+                  className={`coin-shop-btn ${disabled ? 'disabled' : ''}`}
+                  onClick={() => handleBuy(item.id)}
+                  disabled={disabled}
+                >
+                  <div className="coin-shop-info">
+                    <span className="coin-shop-name">{item.icon} {item.name}{isDoubleActive ? ' (生效中)' : ''}</span>
+                    <span className="coin-shop-desc">{item.desc}</span>
+                  </div>
+                  <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> {item.cost}</span>
+                </button>
+              );
+            })}
+            {shopItems.filter(item => item.enabled).length === 0 && (
+              <div className="coin-shop-empty">商店暂未上架商品，点击右上角「编辑」添加</div>
+            )}
+          </div>
+        )}
 
-          <button className={`coin-shop-btn ${userProfile.coins < 100 ? 'disabled' : ''}`} onClick={handleBuyBossSmash} disabled={userProfile.coins < 100}>
-            <div className="coin-shop-info">
-              <span className="coin-shop-name">⚔ Boss 重击</span>
-              <span className="coin-shop-desc">对当前 Boss 直接造成 30 伤害</span>
-            </div>
-            <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> 100</span>
-          </button>
-
-          <button className={`coin-shop-btn ${userProfile.coins < 200 ? 'disabled' : ''}`} onClick={handleBuyQuickComplete} disabled={userProfile.coins < 200}>
-            <div className="coin-shop-info">
-              <span className="coin-shop-name">⚡ 任务加速</span>
-              <span className="coin-shop-desc">立即完成一个最高优先级任务</span>
-            </div>
-            <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> 200</span>
-          </button>
-        </div>
         {userProfile.streakShields > 0 && (
           <div className="coin-shop-buff">
             🛡 护盾 × {userProfile.streakShields}

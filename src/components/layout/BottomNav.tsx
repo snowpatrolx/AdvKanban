@@ -6,6 +6,7 @@ const tabs = [
   { path: '/', label: '首页', Icon: IconTasks },
   { path: '/kanban', label: '任务', Icon: IconList },
   { path: '/notes', label: '便签', Icon: IconNote },
+  { path: '/stats', label: '统计', Icon: IconChart },
   { path: '/adventure', label: '冒险', Icon: IconMap },
   { path: '/profile', label: '我的', Icon: IconUser },
 ];

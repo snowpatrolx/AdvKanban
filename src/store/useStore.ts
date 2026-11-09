@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   Task, Category, Knowledge, Note, UserProfile, StoryProgress, StoryLog, DailyRecord,
-  TaskStatus, TaskPriority, RepeatType, LogType,
+  TaskStatus, TaskPriority, RepeatType, LogType, ShopItem, FarmPlot,
 } from '../types';
 import { generateId, getTodayStr } from '../utils/id';
 import {
@@ -70,11 +70,19 @@ interface StoreState {
 
   // 金币操作
   spendCoins: (amount: number) => boolean;
-  // 金币商店
-  shopBuyStreakShield: () => boolean;  // 购买连续天数护盾
-  shopBuyCoinDouble: () => boolean;    // 购买下一次双倍金币
-  shopBuyBossSmash: () => boolean;     // 购买 Boss 重击（直接造成伤害）
-  shopBuyQuickComplete: () => boolean; // 购买"立即完成一个任务"
+
+  // 金币商店（可编辑）
+  shopItems: ShopItem[];
+  buyShopItem: (itemId: string) => boolean;
+  updateShopItem: (id: string, data: Partial<ShopItem>) => void;
+  addShopItem: (data: Omit<ShopItem, 'id'>) => string;
+  deleteShopItem: (id: string) => void;
+  resetShopItems: () => void;
+
+  // 家园农田
+  farm: FarmPlot[];
+  plantCrop: (plotId: number, cropKey: string) => boolean;
+  harvestCrop: (plotId: number) => number;
 
   // 互动
   adventureOption: (optionId: string) => { bossDamage: number; message: string; bossDefeated: boolean; cost: number; coinsGained: number; weakened: boolean; boosted: boolean };
@@ -84,7 +92,25 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.19';
+export const APP_VERSION = '1.20';
+
+// 家园农田作物配置
+export const FARM_CROPS: Record<string, { name: string; emoji: string; cost: number; required: number; reward: number }> = {
+  wheat: { name: '小麦', emoji: '🌾', cost: 20, required: 3, reward: 32 },
+  carrot: { name: '胡萝卜', emoji: '🥕', cost: 35, required: 5, reward: 60 },
+  starfruit: { name: '星光果', emoji: '✨', cost: 60, required: 8, reward: 110 },
+};
+
+const defaultShopItems: ShopItem[] = [
+  { id: 'shop-shield', name: '连续天数护盾', desc: '下次断签自动保持天数', cost: 50, icon: '🛡', effect: 'streakShield', enabled: true },
+  { id: 'shop-double', name: '双倍金币券', desc: '下一次完成任务金币翻倍', cost: 30, icon: '✦', effect: 'coinDouble', enabled: true },
+  { id: 'shop-boss', name: 'Boss 重击', desc: '对当前 Boss 直接造成 30 伤害', cost: 100, icon: '⚔', effect: 'bossSmash', enabled: true },
+  { id: 'shop-quick', name: '任务加速', desc: '立即完成一个最高优先级任务', cost: 200, icon: '⚡', effect: 'quickComplete', enabled: true },
+];
+
+const defaultFarm: FarmPlot[] = [1, 2, 3].map(id => ({
+  id, crop: null, progress: 0, required: 0, cost: 0, reward: 0,
+}));
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -240,8 +266,8 @@ export const useStore = create<StoreState>()(
       dailyRecords: [],
       storyProgress: defaultStoryProgress,
       storyLogs: [],
-
-      // ===== 任务操作 =====
+      shopItems: defaultShopItems,
+      farm: defaultFarm,
       addTask: (data) => {
         const id = generateId();
         const now = new Date().toISOString();
@@ -520,6 +546,11 @@ export const useStore = create<StoreState>()(
           storyComplete,
         });
 
+        // 完成任务推进家园农田里的作物成长
+        const newFarm = state.farm.map(p =>
+          p.crop && p.progress < p.required ? { ...p, progress: p.progress + 1 } : p,
+        );
+
         set({
           tasks: updatedTasks,
           userProfile: newProfileState,
@@ -527,6 +558,7 @@ export const useStore = create<StoreState>()(
           storyProgress: newStoryProgress,
           storyLogs: newStoryLogs,
           userBadges: [...state.userBadges, ...newBadges],
+          farm: newFarm,
         });
 
         return { pointsEarned, coinsEarned, newBadges, bossDefeated, storyUnlocked, wheelCoinsBonus, wheelMilestone: highestMilestoneCrossed };
@@ -874,15 +906,16 @@ export const useStore = create<StoreState>()(
         }));
       },
 
-      // 每日任务每日重置：昨日完成的 daily 任务自动回到未完成状态
+      // 每日任务每日重置：昨日完成的 daily 任务自动回到未完成状态，并把日期滚动到今天
       resetDailyTasks: () => {
         set(state => {
+          const todayStr = getTodayStr();
           let changed = false;
           const tasks = state.tasks.map(t => {
             if (t.status !== 'daily' || !t.completedAt) return t;
-            if (toLocalDateStr(t.completedAt) === getTodayStr()) return t;
+            if (toLocalDateStr(t.completedAt) === todayStr) return t;
             changed = true;
-            return { ...t, completedAt: null };
+            return { ...t, completedAt: null, dueDate: t.dueDate ? todayStr : t.dueDate };
           });
           return changed ? { tasks } : {};
         });
@@ -901,6 +934,8 @@ export const useStore = create<StoreState>()(
           dailyRecords: state.dailyRecords,
           storyProgress: state.storyProgress,
           storyLogs: state.storyLogs,
+          shopItems: state.shopItems,
+          farm: state.farm,
           exportTime: new Date().toISOString(),
           version: APP_VERSION,
         };
@@ -920,6 +955,8 @@ export const useStore = create<StoreState>()(
             dailyRecords: data.dailyRecords || [],
             storyProgress: data.storyProgress || defaultStoryProgress,
             storyLogs: data.storyLogs || [],
+            shopItems: data.shopItems || defaultShopItems,
+            farm: data.farm || defaultFarm,
           });
           return true;
         } catch {
@@ -938,6 +975,8 @@ export const useStore = create<StoreState>()(
           dailyRecords: [],
           storyProgress: defaultStoryProgress,
           storyLogs: [],
+          shopItems: defaultShopItems,
+          farm: defaultFarm,
         });
       },
 
@@ -949,117 +988,159 @@ export const useStore = create<StoreState>()(
         return true;
       },
 
-      // 金币商店：连续天数护盾
-      shopBuyStreakShield: () => {
+      // 金币商店：购买指定商品（价格与名称均可在商店中编辑）
+      buyShopItem: (itemId) => {
         const state = get();
-        const COST = 50;
-        if (state.userProfile.coins < COST) return false;
-        set({
-          userProfile: {
-            ...state.userProfile,
-            coins: state.userProfile.coins - COST,
-            streakShields: state.userProfile.streakShields + 1,
-          },
-        });
-        return true;
-      },
+        const item = state.shopItems.find(i => i.id === itemId);
+        if (!item || !item.enabled) return false;
+        const cost = Math.max(0, item.cost);
+        if (state.userProfile.coins < cost) return false;
 
-      // 金币商店：下一次任务双倍金币
-      shopBuyCoinDouble: () => {
-        const state = get();
-        const COST = 30;
-        if (state.userProfile.coins < COST) return false;
-        if (state.userProfile.pendingCoinDouble) return false;
-        set({
-          userProfile: {
-            ...state.userProfile,
-            coins: state.userProfile.coins - COST,
-            pendingCoinDouble: true,
-          },
-        });
-        return true;
-      },
-
-      // 金币商店：Boss 重击（直接造成 30 伤害）
-      shopBuyBossSmash: () => {
-        const state = get();
-        const COST = 100;
-        if (state.userProfile.coins < COST) return false;
-        const currentChapter = CHAPTERS.find(c => c.id === state.storyProgress.currentChapter);
-        if (!currentChapter || !currentChapter.bossName) return false;
-        if (state.storyProgress.defeatedBosses.includes(currentChapter.id)) return false;
-
-        const BOSS_DAMAGE = 30;
-        const bossMaxHP = currentChapter.bossHP;
-        const currentHP = state.storyProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
-        const buffed = applyBossBuffs(state.storyProgress, currentChapter.id, BOSS_DAMAGE);
-        const result = calculateBossDamage(bossMaxHP, currentHP, buffed.damage);
-
-        const newStoryProgress = { ...state.storyProgress };
-        newStoryProgress.bossWeaken = buffed.bossWeaken;
-        newStoryProgress.bossBoost = buffed.bossBoost;
-        newStoryProgress.bossCurrentHP = {
-          ...newStoryProgress.bossCurrentHP,
-          [currentChapter.id]: result.remainingHP,
-        };
-
-        const newStoryLogs = [...state.storyLogs];
-        newStoryLogs.push(createLog(
-          currentChapter.id,
-          `你购买了 Boss 重击，对${currentChapter.bossName}造成 ${buffed.damage} 点伤害！`,
-          'damage',
-        ));
-
-        let bossDefeated = false;
-        let storyUnlocked: number | null = null;
-        if (result.isDefeated) {
-          bossDefeated = true;
-          newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, currentChapter.id];
-          newStoryLogs.push(createLog(
-            currentChapter.id,
-            currentChapter.bossDefeatedText,
-            'story',
-          ));
-          const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
-          if (nextChapter) {
-            newStoryProgress.currentChapter = nextChapter.id;
-            newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
-            storyUnlocked = nextChapter.id;
-            newStoryLogs.push(createLog(
-              nextChapter.id,
-              nextChapter.storyText,
-              'story',
-            ));
-          }
+        if (item.effect === 'streakShield') {
+          set({
+            userProfile: {
+              ...state.userProfile,
+              coins: state.userProfile.coins - cost,
+              streakShields: state.userProfile.streakShields + 1,
+            },
+          });
+          return true;
         }
 
+        if (item.effect === 'coinDouble') {
+          if (state.userProfile.pendingCoinDouble) return false;
+          set({
+            userProfile: {
+              ...state.userProfile,
+              coins: state.userProfile.coins - cost,
+              pendingCoinDouble: true,
+            },
+          });
+          return true;
+        }
+
+        if (item.effect === 'bossSmash') {
+          const currentChapter = CHAPTERS.find(c => c.id === state.storyProgress.currentChapter);
+          if (!currentChapter || !currentChapter.bossName) return false;
+          if (state.storyProgress.defeatedBosses.includes(currentChapter.id)) return false;
+
+          const BOSS_DAMAGE = 30;
+          const bossMaxHP = currentChapter.bossHP;
+          const currentHP = state.storyProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
+          const buffed = applyBossBuffs(state.storyProgress, currentChapter.id, BOSS_DAMAGE);
+          const result = calculateBossDamage(bossMaxHP, currentHP, buffed.damage);
+
+          const newStoryProgress = { ...state.storyProgress };
+          newStoryProgress.bossWeaken = buffed.bossWeaken;
+          newStoryProgress.bossBoost = buffed.bossBoost;
+          newStoryProgress.bossCurrentHP = {
+            ...newStoryProgress.bossCurrentHP,
+            [currentChapter.id]: result.remainingHP,
+          };
+
+          const newStoryLogs = [...state.storyLogs];
+          newStoryLogs.push(createLog(
+            currentChapter.id,
+            `你购买了 Boss 重击，对${currentChapter.bossName}造成 ${buffed.damage} 点伤害！`,
+            'damage',
+          ));
+
+          if (result.isDefeated) {
+            newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, currentChapter.id];
+            newStoryLogs.push(createLog(
+              currentChapter.id,
+              currentChapter.bossDefeatedText,
+              'story',
+            ));
+            const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
+            if (nextChapter) {
+              newStoryProgress.currentChapter = nextChapter.id;
+              newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
+              newStoryLogs.push(createLog(
+                nextChapter.id,
+                nextChapter.storyText,
+                'story',
+              ));
+            }
+          }
+
+          set({
+            userProfile: { ...state.userProfile, coins: state.userProfile.coins - cost },
+            storyProgress: newStoryProgress,
+            storyLogs: newStoryLogs,
+          });
+          return true;
+        }
+
+        if (item.effect === 'quickComplete') {
+          const candidates = state.tasks.filter((t: Task) =>
+            !t.parentId && !t.archived && (t.status === 'todo' || t.status === 'doing')
+          );
+          if (candidates.length === 0) return false;
+          const task = [...candidates].sort((a, b) => {
+            const pa = a.priority === 'high' ? 0 : a.priority === 'medium' ? 1 : 2;
+            const pb = b.priority === 'high' ? 0 : b.priority === 'medium' ? 1 : 2;
+            if (pa !== pb) return pa - pb;
+            return a.order - b.order;
+          })[0];
+          set({ userProfile: { ...state.userProfile, coins: state.userProfile.coins - cost } });
+          get()._processTaskCompletion(task);
+          return true;
+        }
+
+        return false;
+      },
+
+      updateShopItem: (id, data) => {
+        set(state => ({
+          shopItems: state.shopItems.map(i => i.id === id ? { ...i, ...data } : i),
+        }));
+      },
+
+      addShopItem: (data) => {
+        const id = generateId();
+        set(state => ({ shopItems: [...state.shopItems, { ...data, id }] }));
+        return id;
+      },
+
+      deleteShopItem: (id) => {
+        set(state => ({ shopItems: state.shopItems.filter(i => i.id !== id) }));
+      },
+
+      resetShopItems: () => {
+        set({ shopItems: defaultShopItems });
+      },
+
+      // 家园农田：播种
+      plantCrop: (plotId, cropKey) => {
+        const state = get();
+        const crop = FARM_CROPS[cropKey];
+        if (!crop) return false;
+        const plot = state.farm.find(p => p.id === plotId);
+        if (!plot || plot.crop) return false;
+        if (state.userProfile.coins < crop.cost) return false;
         set({
-          userProfile: { ...state.userProfile, coins: state.userProfile.coins - COST },
-          storyProgress: newStoryProgress,
-          storyLogs: newStoryLogs,
+          userProfile: { ...state.userProfile, coins: state.userProfile.coins - crop.cost },
+          farm: state.farm.map(p => p.id === plotId
+            ? { ...p, crop: cropKey, progress: 0, required: crop.required, cost: crop.cost, reward: crop.reward }
+            : p),
         });
         return true;
       },
 
-      // 金币商店：立即完成一个任务（完成优先级最高的 todo/doing 非每日主任务）
-      shopBuyQuickComplete: () => {
+      // 家园农田：收获成熟作物，返回获得的金币
+      harvestCrop: (plotId) => {
         const state = get();
-        const COST = 200;
-        if (state.userProfile.coins < COST) return false;
-        // 找一个 todo/doing 非 daily/shopping 的主任务
-        const candidates = state.tasks.filter((t: Task) =>
-          !t.parentId && !t.archived && (t.status === 'todo' || t.status === 'doing')
-        );
-        if (candidates.length === 0) return false;
-        const task = [...candidates].sort((a, b) => {
-          const pa = a.priority === 'high' ? 0 : a.priority === 'medium' ? 1 : 2;
-          const pb = b.priority === 'high' ? 0 : b.priority === 'medium' ? 1 : 2;
-          if (pa !== pb) return pa - pb;
-          return a.order - b.order;
-        })[0];
-        set({ userProfile: { ...state.userProfile, coins: state.userProfile.coins - COST } });
-        get()._processTaskCompletion(task);
-        return true;
+        const plot = state.farm.find(p => p.id === plotId);
+        if (!plot || !plot.crop || plot.progress < plot.required) return 0;
+        const reward = plot.reward;
+        set({
+          userProfile: { ...state.userProfile, coins: state.userProfile.coins + reward },
+          farm: state.farm.map(p => p.id === plotId
+            ? { id: p.id, crop: null, progress: 0, required: 0, cost: 0, reward: 0 }
+            : p),
+        });
+        return reward;
       },
 
       // 冒险章节互动：消耗金币选择选项，产生伤害 / 削弱 / 金币效果
@@ -1196,7 +1277,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'quest-planner-storage',
-      version: 11,
+      version: 12,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
@@ -1320,6 +1401,37 @@ export const useStore = create<StoreState>()(
           }
         }
 
+        // v11 -> v12: 新增可编辑金币商店、家园农田，并补齐轮盘奖励字段
+        if (version < 12) {
+          if (!state.shopItems) state.shopItems = defaultShopItems;
+          if (!state.farm) state.farm = defaultFarm;
+          if (state.userProfile) {
+            state.userProfile = {
+              ...state.userProfile,
+              wheelRewardedCount: state.userProfile.wheelRewardedCount ?? 0,
+              wheelRewardDate: state.userProfile.wheelRewardDate ?? null,
+            };
+          }
+          // 新增第 10-12 章：如果玩家已通关旧章节，自动推进到新章节
+          if (state.storyProgress) {
+            const sp = state.storyProgress;
+            const unlocked: number[] = sp.unlockedChapters || [1];
+            const defeated: number[] = sp.defeatedBosses || [];
+            let current: number = sp.currentChapter || 1;
+            while (defeated.includes(current)) {
+              const next = CHAPTERS.find(c => c.id === current + 1);
+              if (!next) break;
+              if (!unlocked.includes(next.id)) unlocked.push(next.id);
+              current = next.id;
+            }
+            state.storyProgress = {
+              ...sp,
+              currentChapter: current,
+              unlockedChapters: unlocked,
+            };
+          }
+        }
+
         return state;
       },
       onRehydrateStorage: () => (state) => {
@@ -1344,9 +1456,9 @@ export const useStore = create<StoreState>()(
           // 同步重复任务日期 + 重置每日任务
           const todayStr = getTodayStr();
           state.tasks = state.tasks.map(t => {
-            // daily 任务：跨天后清除完成时间，实现每日重复
+            // daily 任务：跨天后清除完成时间并把日期更新为今天，实现每日重复
             if (t.status === 'daily' && t.completedAt && toLocalDateStr(t.completedAt) !== todayStr) {
-              return { ...t, completedAt: null };
+              return { ...t, completedAt: null, dueDate: t.dueDate ? todayStr : t.dueDate };
             }
             if (t.repeat === 'none' || t.status === 'done' || t.archived || t.parentId) return t;
             if (!t.dueDate) return t;

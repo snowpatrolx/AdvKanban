@@ -219,6 +219,156 @@
   text-align: center;
 }
 
+/* 金币商店编辑 */
+.coin-shop-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coin-shop-edit-toggle {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.coin-shop-edit-toggle.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.coin-shop-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coin-shop-edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.coin-shop-edit-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.coin-shop-input {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.coin-shop-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.coin-shop-input-icon {
+  width: 42px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.coin-shop-input-name {
+  flex: 1;
+}
+
+.coin-shop-input-cost {
+  width: 76px;
+  flex-shrink: 0;
+}
+
+.coin-shop-input-desc {
+  width: 100%;
+  font-size: 12px;
+}
+
+.coin-shop-edit-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.coin-shop-select {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+.coin-shop-enable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.coin-shop-delete {
+  margin-left: auto;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(232, 67, 147, 0.35);
+  background: rgba(232, 67, 147, 0.08);
+  color: #e84393;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.coin-shop-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.coin-shop-add,
+.coin-shop-reset {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.coin-shop-add {
+  border: 1px dashed var(--color-primary);
+  background: rgba(108, 92, 231, 0.06);
+  color: var(--color-primary);
+}
+
+.coin-shop-reset {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+}
+
+.coin-shop-empty {
+  padding: 16px 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-light);
+}
+
 /* 徽章网格 */
 .profile-badge-grid {
   display: grid;

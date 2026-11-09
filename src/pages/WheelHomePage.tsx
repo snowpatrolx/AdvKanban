@@ -377,6 +377,19 @@ function WheelTaskCard({ task, onToggle, onClick, categories, allTasks, onToggle
 
 // ===== 每日任务轮盘 =====
 const WHEEL_SEGMENTS = 12;
+const WHEEL_VIEW = 260;
+const WHEEL_CX = WHEEL_VIEW / 2;
+const WHEEL_CY = WHEEL_VIEW / 2;
+const WHEEL_R_OUTER = 100;
+const WHEEL_R_INNER = 64;
+const WHEEL_R_NODE = 114;
+
+// 里程碑节点：第 4 / 8 / 12 个任务
+const WHEEL_MILESTONES = [
+  { at: 4, index: 3, reward: 15, extra: '' },
+  { at: 8, index: 7, reward: 30, extra: '双倍券' },
+  { at: 12, index: 11, reward: 50, extra: '护盾' },
+];
 
 function polarPoint(cx: number, cy: number, r: number, deg: number) {
   const rad = ((deg - 90) * Math.PI) / 180;
@@ -403,41 +416,84 @@ function wheelSegmentColor(i: number) {
 function DailyWheelCard({ count }: { count: number }) {
   const filled = Math.min(count, WHEEL_SEGMENTS);
   const seg = 360 / WHEEL_SEGMENTS;
-  const gap = 3;
+  const gap = 2.4;
   const remaining = WHEEL_SEGMENTS - filled;
+  const nextMilestone = WHEEL_MILESTONES.find(m => filled < m.at);
 
   return (
     <div className="daily-wheel-card">
       <div className="daily-wheel-svg-wrap">
-        <svg viewBox="0 0 200 200" className="daily-wheel-svg" key={filled}>
+        <svg viewBox={`0 0 ${WHEEL_VIEW} ${WHEEL_VIEW}`} className="daily-wheel-svg" key={filled}>
+          {/* 光晕与外轨 */}
+          <circle cx={WHEEL_CX} cy={WHEEL_CY} r={WHEEL_R_OUTER + 8} className="daily-wheel-halo" />
+          <circle cx={WHEEL_CX} cy={WHEEL_CY} r={WHEEL_R_NODE} className="daily-wheel-orbit" />
+
+          {/* 背景扇区 */}
           {Array.from({ length: WHEEL_SEGMENTS }).map((_, i) => (
             <path
               key={`bg-${i}`}
-              d={sectorPath(100, 100, 88, 58, i * seg + gap / 2, (i + 1) * seg - gap / 2)}
+              d={sectorPath(WHEEL_CX, WHEEL_CY, WHEEL_R_OUTER, WHEEL_R_INNER, i * seg + gap / 2, (i + 1) * seg - gap / 2)}
               className="daily-wheel-seg-bg"
             />
           ))}
+
+          {/* 已点亮扇区 */}
           {Array.from({ length: filled }).map((_, i) => (
             <path
               key={`fill-${i}`}
-              d={sectorPath(100, 100, 88, 58, i * seg + gap / 2, (i + 1) * seg - gap / 2)}
+              d={sectorPath(WHEEL_CX, WHEEL_CY, WHEEL_R_OUTER, WHEEL_R_INNER, i * seg + gap / 2, (i + 1) * seg - gap / 2)}
               fill={wheelSegmentColor(i)}
               className="daily-wheel-seg-fill"
-              style={{ animationDelay: `${i * 55}ms` }}
+              style={{ animationDelay: `${i * 45}ms` }}
             />
           ))}
+
+          {/* 里程碑连接线与节点 */}
+          {WHEEL_MILESTONES.map(m => {
+            const angle = (m.index + 0.5) * seg;
+            const outer = polarPoint(WHEEL_CX, WHEEL_CY, WHEEL_R_OUTER + 2, angle);
+            const inner = polarPoint(WHEEL_CX, WHEEL_CY, WHEEL_R_NODE - 14, angle);
+            const node = polarPoint(WHEEL_CX, WHEEL_CY, WHEEL_R_NODE, angle);
+            const reached = filled >= m.at;
+            const isNext = nextMilestone?.at === m.at;
+            return (
+              <g key={m.at} className={`wheel-node ${reached ? 'reached' : ''} ${isNext ? 'next' : ''}`}>
+                <line x1={outer.x} y1={outer.y} x2={inner.x} y2={inner.y} className="daily-wheel-node-link" />
+                <circle cx={node.x} cy={node.y} r={13} className="wheel-node-bg" />
+                <text x={node.x} y={node.y} textAnchor="middle" dominantBaseline="central" className="wheel-node-text">
+                  {m.reward}
+                </text>
+              </g>
+            );
+          })}
         </svg>
+
         <div className="daily-wheel-center">
-          <span className="daily-wheel-count">{count}</span>
-          <span className="daily-wheel-total">/{WHEEL_SEGMENTS}</span>
+          <div className="daily-wheel-center-num">
+            <span className="daily-wheel-count">{count}</span>
+            <span className="daily-wheel-total">/{WHEEL_SEGMENTS}</span>
+          </div>
+          <span className="daily-wheel-center-label">今日完成</span>
         </div>
       </div>
+
       <div className="daily-wheel-info">
         <div className="daily-wheel-title">今日任务轮盘</div>
         <div className="daily-wheel-desc">
           {remaining <= 0
             ? '今日轮盘已点亮，太棒了！'
             : `再完成 ${remaining} 个任务即可点亮整个轮盘`}
+        </div>
+        <div className="daily-wheel-milestones">
+          {WHEEL_MILESTONES.map(m => (
+            <div
+              key={m.at}
+              className={`wheel-ms-chip ${filled >= m.at ? 'reached' : ''} ${nextMilestone?.at === m.at ? 'next' : ''}`}
+            >
+              <span className="wheel-ms-at">{m.at}</span>
+              <span className="wheel-ms-reward">+{m.reward} 金币{m.extra ? ` · ${m.extra}` : ''}</span>
+            </div>
+          ))}
         </div>
         <div className="daily-wheel-hint">每天 0 点自动重置 · 完成任务获得金币</div>
       </div>

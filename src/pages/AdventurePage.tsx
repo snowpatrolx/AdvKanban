@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
-import { useStore } from '../store/useStore';
+import { useStore, FARM_CROPS } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { CHAPTERS } from '../data/chapters';
-import { IconCheck, IconPin, IconLock, IconMap, IconSword, IconBook, IconCoins } from '../components/common/Icons';
+import { IconCheck, IconPin, IconLock, IconMap, IconSword, IconBook, IconCoins, IconSeedling } from '../components/common/Icons';
 import type { LogType } from '../types';
 import './AdventurePage.css';
 
@@ -39,7 +39,7 @@ function getOptionTag(option: { effect?: string; damage: number; weakenMultiplie
 }
 
 export default function AdventurePage() {
-  const { storyProgress, storyLogs, userProfile, knowledge, adventureOption } = useStore();
+  const { storyProgress, storyLogs, userProfile, knowledge, adventureOption, farm, plantCrop, harvestCrop } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const [activeTab, setActiveTab] = useState<'map' | 'logs'>('logs');
   const [interactMsg, setInteractMsg] = useState<string | null>(null);
@@ -104,6 +104,25 @@ export default function AdventurePage() {
       setIsAttacking(false);
       setTimeout(() => setInteractMsg(null), 3500);
     }, 300);
+  };
+
+  // 农田：播种
+  const handlePlant = (plotId: number, cropKey: string) => {
+    const crop = FARM_CROPS[cropKey];
+    if (!crop) return;
+    if (plantCrop(plotId, cropKey)) {
+      addToast({ icon: crop.emoji, title: `已种下${crop.name}`, subtitle: `完成 ${crop.required} 个任务后成熟` });
+    } else {
+      addToast({ icon: '!', title: '无法播种', subtitle: '金币不足或地块已占用' });
+    }
+  };
+
+  // 农田：收获
+  const handleHarvest = (plotId: number) => {
+    const coins = harvestCrop(plotId);
+    if (coins > 0) {
+      addToast({ icon: '◉', title: `收获 +${coins} 金币`, subtitle: '农田已清空，可继续播种' });
+    }
   };
 
   return (
@@ -250,6 +269,61 @@ export default function AdventurePage() {
           )}
         </div>
       )}
+
+      {/* 家园农田 */}
+      <div className="adventure-farm-card">
+        <div className="adventure-farm-header">
+          <h3 className="adventure-farm-title">
+            <IconSeedling size={18} color="#00b894" /> 家园农田
+          </h3>
+          <span className="adventure-farm-hint">完成主任务让作物成长</span>
+        </div>
+        <div className="adventure-farm-plots">
+          {farm.map(plot => {
+            const crop = plot.crop ? FARM_CROPS[plot.crop] : null;
+            const ready = !!crop && plot.progress >= plot.required;
+            const pct = crop ? Math.min(100, Math.round((plot.progress / Math.max(1, plot.required)) * 100)) : 0;
+            return (
+              <div key={plot.id} className={`farm-plot ${crop ? 'planted' : ''} ${ready ? 'ready' : ''}`}>
+                {crop ? (
+                  <>
+                    <div className="farm-plot-crop">
+                      <span className="farm-plot-emoji">{crop.emoji}</span>
+                      <span className="farm-plot-name">{crop.name}</span>
+                    </div>
+                    <div className="farm-plot-bar">
+                      <div className="farm-plot-fill" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="farm-plot-meta">
+                      {ready ? '已成熟' : `${plot.progress}/${plot.required} 个任务`}
+                    </div>
+                    <button className="farm-harvest-btn" disabled={!ready} onClick={() => handleHarvest(plot.id)}>
+                      {ready ? `收获 +${plot.reward} 金币` : '成长中…'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="farm-plot-empty">空地</div>
+                    <div className="farm-plant-options">
+                      {Object.entries(FARM_CROPS).map(([key, c]) => (
+                        <button
+                          key={key}
+                          className="farm-plant-btn"
+                          disabled={userProfile.coins < c.cost}
+                          onClick={() => handlePlant(plot.id, key)}
+                        >
+                          <span className="farm-plant-label">{c.emoji} {c.name}</span>
+                          <span className="farm-plant-cost">{c.cost} 金币 · {c.required} 任务</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Tab 切换 */}
       <div className="adventure-tabs">
