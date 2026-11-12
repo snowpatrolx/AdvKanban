@@ -8,7 +8,6 @@ import {
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import type { Task, TaskStatus, Category } from '../types';
-import { BADGES } from '../data/badges';
 import { priorityColor, priorityLabel, getCategoryName, getCategoryColor, formatDate } from '../utils/taskHelpers';
 import './KanbanPage.css';
 
@@ -70,10 +69,6 @@ export default function KanbanPage() {
       if (result.pointsEarned > 0) {
         addToast({ icon: '⭐', title: `+${result.pointsEarned} 经验值！` });
       }
-      result.newBadges.forEach(badgeId => {
-        const badge = BADGES.find(b => b.id === badgeId);
-        if (badge) addToast({ icon: badge.icon, title: `获得徽章：${badge.name}` });
-      });
       if (result.bossDefeated) addToast({ icon: '🎉', title: 'Boss 已击败！' });
       if (result.storyUnlocked && result.storyUnlocked > 0) {
         addToast({ icon: '🗺️', title: '新章节已解锁！' });

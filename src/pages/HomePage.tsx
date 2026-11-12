@@ -5,7 +5,6 @@ import { useToastStore } from '../components/common/Toast';
 import { Modal } from '../components/common/Modal';
 import { getLevelProgress } from '../utils/gamification';
 import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor } from '../utils/taskHelpers';
-import { BADGES } from '../data/badges';
 import './HomePage.css';
 
 export default function HomePage() {
@@ -62,12 +61,6 @@ export default function HomePage() {
     if (result.pointsEarned > 0) {
       addToast({ icon: '⭐', title: `+${result.pointsEarned} 经验值！`, subtitle: '继续加油！' });
     }
-    result.newBadges.forEach(badgeId => {
-      const badge = BADGES.find(b => b.id === badgeId);
-      if (badge) {
-        addToast({ icon: badge.icon, title: `获得徽章：${badge.name}`, subtitle: badge.description });
-      }
-    });
     if (result.bossDefeated) {
       addToast({ icon: '🎉', title: 'Boss 已击败！', subtitle: '冒险章节已推进' });
     }

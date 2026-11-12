@@ -9,7 +9,8 @@ import { useStore, ANY_CATEGORY_ID } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { Modal } from '../components/common/Modal';
 import { NotesModal } from '../components/common/NotesModal';
-import { BADGES } from '../data/badges';
+import { getDailyWheelRewards } from '../utils/wheelRewards';
+import { getTodayStr } from '../utils/id';
 import {
   IconPlus, IconSearch, IconCalendar, IconCheckCircle, IconList, IconColumns,
   IconFlame, IconRepeat, IconChevronDown, IconChevronRight, IconSubtask, IconDrag,
@@ -208,17 +209,17 @@ export default function HomeKanbanPage() {
     if (result.coinsEarned > 0) {
       addToast({ icon: '◉', title: `+${result.coinsEarned} 金币` });
     }
-    result.newBadges.forEach(badgeId => {
-      const badge = BADGES.find(b => b.id === badgeId);
-      if (badge) addToast({ icon: '★', title: `获得徽章：${badge.name}` });
-    });
     if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });
     if (result.storyUnlocked && result.storyUnlocked > 0) {
       addToast({ icon: '◆', title: '新章节已解锁！' });
     }
     if (result.wheelMilestone !== null) {
-      const msgs: Record<number, string> = { 4: '轮盘节点 +15 金币', 8: '轮盘节点 +30 金币', 12: '轮盘满格 +50 金币' };
-      addToast({ icon: '🎯', title: msgs[result.wheelMilestone] || '轮盘节点奖励' });
+      const reward = getDailyWheelRewards(getTodayStr()).find(r => r.at === result.wheelMilestone);
+      addToast({
+        icon: '🎯',
+        title: `轮盘节点 ${result.wheelMilestone}/12`,
+        subtitle: reward ? `今日奖励：${reward.label}` : '节点奖励已领取',
+      });
     }
   };
 
@@ -275,10 +276,6 @@ export default function HomeKanbanPage() {
       if (result.pointsEarned > 0) {
       addToast({ icon: '★', title: `+${result.pointsEarned} 经验值！` });
     }
-    result.newBadges.forEach(badgeId => {
-      const badge = BADGES.find(b => b.id === badgeId);
-      if (badge) addToast({ icon: '★', title: `获得徽章：${badge.name}` });
-    });
     if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });
     } else {
       setTaskStatus(task.id, targetStatus);

@@ -6,12 +6,12 @@ import type {
 } from '../types';
 import { generateId, getTodayStr } from '../utils/id';
 import {
-  calculateTaskPoints, getLevelByPoints, updateStreak, checkAllBadges,
+  calculateTaskPoints, getLevelByPoints, updateStreak,
   checkChapterCondition, calculateBossDamage, updateDailyRecord,
 } from '../utils/gamification';
+import { getDailyWheelRewards } from '../utils/wheelRewards';
 import { advanceOccurrence, nextOccurrenceOnOrAfter, isToday, toLocalDateStr } from '../utils/taskHelpers';
 import { CHAPTERS } from '../data/chapters';
-import { BADGES } from '../data/badges';
 
 interface StoreState {
   tasks: Task[];
@@ -74,6 +74,7 @@ interface StoreState {
   // 金币商店（可编辑）
   shopItems: ShopItem[];
   buyShopItem: (itemId: string) => boolean;
+  buyShoppingTask: (taskId: string) => boolean;
   updateShopItem: (id: string, data: Partial<ShopItem>) => void;
   addShopItem: (data: Omit<ShopItem, 'id'>) => string;
   deleteShopItem: (id: string) => void;
@@ -92,7 +93,7 @@ interface StoreState {
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.20';
+export const APP_VERSION = '1.21';
 
 // 家园农田作物配置
 export const FARM_CROPS: Record<string, { name: string; emoji: string; cost: number; required: number; reward: number }> = {
@@ -111,6 +112,14 @@ const defaultShopItems: ShopItem[] = [
 const defaultFarm: FarmPlot[] = [1, 2, 3].map(id => ({
   id, crop: null, progress: 0, required: 0, cost: 0, reward: 0,
 }));
+
+/** 购物任务在金币商城中的价格（按优先级） */
+export function getShoppingTaskPrice(task: Task): number {
+  if (task.priority === 'high') return 80;
+  if (task.priority === 'medium') return 50;
+  if (task.priority === 'low') return 30;
+  return 40;
+}
 
 const defaultCategories: Category[] = [
   { id: 'cat-home', name: 'home', color: '#e17055' },
@@ -402,16 +411,16 @@ export const useStore = create<StoreState>()(
         if (consumeCoinDouble) newProfileState.pendingCoinDouble = false;
         if (consumeShield) newProfileState.streakShields = Math.max(0, profile.streakShields - 1);
 
-        // 轮盘节点奖励：每天 0 点重置，在 4/8/12 个任务完成时发放金币和护盾
+        // 轮盘节点奖励：每天随机刷新，在 4/8/12 个任务完成时发放
         let wheelCoinsBonus = 0;
-        let wheelShieldBonus = 0;
-        let wheelCoinDoubleBonus = false;
+        let wheelPointsBonus = 0;
+        let wheelFarmBoost = 0;
         // 今天完成的任务数（包含刚刚完成的）
         const todayDoneCount =
           state.tasks.filter(t => t.status === 'done' && isToday(t.completedAt)).length +
           state.tasks.filter(t => t.status === 'daily' && t.completedAt && isToday(t.completedAt)).length + 1;
         const milestones = [4, 8, 12];
-        const milestoneCoinRewards: Record<number, number> = { 4: 15, 8: 30, 12: 50 };
+        const dailyWheelRewards = getDailyWheelRewards(todayStr);
         // 如果不是今天的轮盘，重置已奖励计数
         const alreadyClaimed = (newProfileState.wheelRewardDate === todayStr)
           ? (newProfileState.wheelRewardedCount || 0)
@@ -419,17 +428,38 @@ export const useStore = create<StoreState>()(
         let newClaimed = alreadyClaimed;
         for (let i = alreadyClaimed; i < milestones.length; i++) {
           if (todayDoneCount >= milestones[i]) {
-            wheelCoinsBonus += milestoneCoinRewards[milestones[i]] || 0;
             newClaimed = i + 1;
-            if (milestones[i] === 8) wheelCoinDoubleBonus = true;
-            if (milestones[i] === 12) wheelShieldBonus += 1;
+            const reward = dailyWheelRewards.find(r => r.at === milestones[i]);
+            if (!reward) continue;
+            switch (reward.kind) {
+              case 'coins':
+                wheelCoinsBonus += reward.amount;
+                break;
+              case 'shield':
+                newProfileState.streakShields = (newProfileState.streakShields || 0) + reward.amount;
+                break;
+              case 'coinDouble':
+                newProfileState.pendingCoinDouble = true;
+                break;
+              case 'bossBonus':
+                newProfileState.pendingBossDamageBonus = (newProfileState.pendingBossDamageBonus || 0) + reward.amount;
+                break;
+              case 'points':
+                wheelPointsBonus += reward.amount;
+                break;
+              case 'farmBoost':
+                wheelFarmBoost += reward.amount;
+                break;
+            }
           }
         }
         newProfileState.coins += wheelCoinsBonus;
+        if (wheelPointsBonus > 0) {
+          newProfileState.totalPoints += wheelPointsBonus;
+          newProfileState.level = getLevelByPoints(newProfileState.totalPoints).level;
+        }
         newProfileState.wheelRewardedCount = newClaimed;
         newProfileState.wheelRewardDate = todayStr;
-        if (wheelCoinDoubleBonus) newProfileState.pendingCoinDouble = true;
-        if (wheelShieldBonus > 0) newProfileState.streakShields = (newProfileState.streakShields || 0) + wheelShieldBonus;
         const highestMilestoneCrossed = newClaimed > alreadyClaimed ? milestones[newClaimed - 1] : null;
         let bossDefeated = false;
         let storyUnlocked: number | null = null;
@@ -536,20 +566,19 @@ export const useStore = create<StoreState>()(
           }
         }
 
-        const storyComplete = newStoryProgress.defeatedBosses.length === CHAPTERS.filter(c => c.bossName).length
-          && CHAPTERS.every(c => newStoryProgress.unlockedChapters.includes(c.id));
-        const newBadges = checkAllBadges(state.userBadges, {
-          completedTaskCount: newCompletedCount,
-          knowledgeCount: state.knowledge.length,
-          currentStreak: newStreak,
-          longestStreak: newLongestStreak,
-          storyComplete,
-        });
+        // 徽章功能已取消，不再发放
+        const newBadges: string[] = [];
 
-        // 完成任务推进家园农田里的作物成长
-        const newFarm = state.farm.map(p =>
-          p.crop && p.progress < p.required ? { ...p, progress: p.progress + 1 } : p,
-        );
+        // 完成任务推进家园农田里的作物成长（轮盘作物成长奖励可额外推进）
+        const newFarm = state.farm.map(p => {
+          if (!p.crop) return p;
+          let progress = p.progress;
+          if (progress < p.required) progress += 1;
+          if (wheelFarmBoost > 0 && progress < p.required) {
+            progress = Math.min(p.required, progress + wheelFarmBoost);
+          }
+          return progress === p.progress ? p : { ...p, progress };
+        });
 
         set({
           tasks: updatedTasks,
@@ -557,7 +586,6 @@ export const useStore = create<StoreState>()(
           dailyRecords: newDailyRecords,
           storyProgress: newStoryProgress,
           storyLogs: newStoryLogs,
-          userBadges: [...state.userBadges, ...newBadges],
           farm: newFarm,
         });
 
@@ -819,16 +847,8 @@ export const useStore = create<StoreState>()(
         };
         set(state => {
           const newKnowledge = [...state.knowledge, item];
-          const newBadges = checkAllBadges(state.userBadges, {
-            completedTaskCount: state.userProfile.completedTaskCount,
-            knowledgeCount: newKnowledge.length,
-            currentStreak: state.userProfile.currentStreak,
-            longestStreak: state.userProfile.longestStreak,
-            storyComplete: false,
-          });
           return {
             knowledge: newKnowledge,
-            userBadges: [...state.userBadges, ...newBadges],
           };
         });
         return id;
@@ -1024,7 +1044,7 @@ export const useStore = create<StoreState>()(
           if (!currentChapter || !currentChapter.bossName) return false;
           if (state.storyProgress.defeatedBosses.includes(currentChapter.id)) return false;
 
-          const BOSS_DAMAGE = 30;
+          const BOSS_DAMAGE = 30 + (state.userProfile.pendingBossDamageBonus || 0);
           const bossMaxHP = currentChapter.bossHP;
           const currentHP = state.storyProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
           const buffed = applyBossBuffs(state.storyProgress, currentChapter.id, BOSS_DAMAGE);
@@ -1065,7 +1085,11 @@ export const useStore = create<StoreState>()(
           }
 
           set({
-            userProfile: { ...state.userProfile, coins: state.userProfile.coins - cost },
+            userProfile: {
+              ...state.userProfile,
+              coins: state.userProfile.coins - cost,
+              pendingBossDamageBonus: 0,
+            },
             storyProgress: newStoryProgress,
             storyLogs: newStoryLogs,
           });
@@ -1089,6 +1113,20 @@ export const useStore = create<StoreState>()(
         }
 
         return false;
+      },
+
+      // 金币商城购买购物任务：扣除金币并完成任务
+      buyShoppingTask: (taskId) => {
+        const state = get();
+        const task = state.tasks.find(t => t.id === taskId && t.status === 'shopping' && !t.archived);
+        if (!task) return false;
+        const price = getShoppingTaskPrice(task);
+        if (state.userProfile.coins < price) return false;
+        set({
+          userProfile: { ...state.userProfile, coins: state.userProfile.coins - price },
+        });
+        get().toggleTaskComplete(taskId);
+        return true;
       },
 
       updateShopItem: (id, data) => {
@@ -1203,10 +1241,11 @@ export const useStore = create<StoreState>()(
           message = `你选择了「${option.label}」，接下来 ${turns} 次出手附加 ${bonus} 点伤害！`;
         } else {
           // damage / drain：造成伤害，并享受削弱与强化效果
+          const pendingBonus = state.userProfile.pendingBossDamageBonus || 0;
           const buffed = applyBossBuffs(
             { ...state.storyProgress, bossWeaken, bossBoost },
             chapterId,
-            option.damage,
+            option.damage + pendingBonus,
           );
           bossDamage = buffed.damage;
           bossWeaken = buffed.bossWeaken;
@@ -1219,6 +1258,7 @@ export const useStore = create<StoreState>()(
           } else {
             message = `你选择了「${option.label}」，消耗 ${option.cost} 金币，对 ${currentChapter.bossName} 造成 ${bossDamage} 点伤害！`;
           }
+          if (pendingBonus > 0) message += `（轮盘加成 +${pendingBonus}）`;
         }
 
         const bossDefeated = newHP === 0 && currentHP > 0;
@@ -1268,7 +1308,11 @@ export const useStore = create<StoreState>()(
           return {
             storyProgress: newStoryProgress,
             storyLogs: newStoryLogs,
-            userProfile: { ...s.userProfile, coins: newCoins },
+            userProfile: {
+              ...s.userProfile,
+              coins: newCoins,
+              pendingBossDamageBonus: bossDamage > 0 ? 0 : s.userProfile.pendingBossDamageBonus,
+            },
           };
         });
 
@@ -1473,4 +1517,4 @@ export const useStore = create<StoreState>()(
 );
 
 // 辅助导出
-export { BADGES, CHAPTERS };
+export { CHAPTERS };

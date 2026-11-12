@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { getLevelByPoints, getLevelProgress } from '../utils/gamification';
 import { getTodayStr, daysBetween } from '../utils/id';
-import { IconChart, IconFlame, IconStar, IconCheck, IconTrophy } from '../components/common/Icons';
+import { IconChart, IconFlame, IconStar, IconCheck, IconCoins } from '../components/common/Icons';
 import './DailyStatsPage.css';
 
 // 一周天数名称
@@ -11,7 +11,7 @@ const WEEKDAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
 const WEEKDAY_COLORS = ['#e17055', '#0984e3', '#6c5ce7', '#00b894', '#fdcb6e', '#e84393', '#a29bfe'];
 
 export default function DailyStatsPage() {
-  const { tasks, userProfile, dailyRecords, userBadges } = useStore();
+  const { tasks, userProfile, dailyRecords } = useStore();
 
   const todayStr = getTodayStr();
   const todayRecord = dailyRecords.find(r => r.date === todayStr);
@@ -74,8 +74,8 @@ export default function DailyStatsPage() {
   // 连续打卡天数
   const streak = userProfile.currentStreak;
 
-  // 徽章数量
-  const badgeCount = userBadges.length;
+  // 金币数量
+  const coinCount = userProfile.coins;
 
   return (
     <div className="page daily-stats-page">
@@ -157,9 +157,9 @@ export default function DailyStatsPage() {
           <span className="stats-mini-label">日均完成</span>
         </div>
         <div className="card stats-mini-card">
-          <IconTrophy size={24} color="#6c5ce7" />
-          <span className="stats-mini-num">{badgeCount}</span>
-          <span className="stats-mini-label">已获徽章</span>
+          <IconCoins size={24} color="#fdcb6e" />
+          <span className="stats-mini-num">{coinCount}</span>
+          <span className="stats-mini-label">持有金币</span>
         </div>
       </div>
 

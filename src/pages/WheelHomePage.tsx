@@ -4,7 +4,8 @@ import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { Modal } from '../components/common/Modal';
 import { NotesModal } from '../components/common/NotesModal';
-import { BADGES } from '../data/badges';
+import { getDailyWheelRewards } from '../utils/wheelRewards';
+import { getTodayStr } from '../utils/id';
 import {
   IconPlus, IconCheckCircle, IconCalendar, IconRepeat, IconChevronDown, IconChevronRight,
   IconSubtask, IconNote, IconFlame, IconCoins, IconCart,
@@ -95,20 +96,18 @@ export default function WheelHomePage() {
     const result = toggleTaskComplete(id);
     if (result.pointsEarned > 0) addToast({ icon: '★', title: `+${result.pointsEarned} 经验值！` });
     if (result.coinsEarned > 0) addToast({ icon: '◉', title: `+${result.coinsEarned} 金币` });
-    result.newBadges.forEach(badgeId => {
-      const badge = BADGES.find(b => b.id === badgeId);
-      if (badge) addToast({ icon: '★', title: `获得徽章：${badge.name}` });
-    });
     if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });
     if (result.storyUnlocked && result.storyUnlocked > 0) addToast({ icon: '◆', title: '新章节已解锁！' });
     if (result.wheelMilestone !== null) {
-      const msgs: Record<number, { title: string; subtitle: string }> = {
-        4: { title: '🎯 轮盘节点：4/12', subtitle: '奖励 +15 金币' },
-        8: { title: '🎯 轮盘节点：8/12', subtitle: '奖励 +30 金币 + 双倍金币券' },
-        12: { title: '🏆 轮盘满格！', subtitle: '奖励 +50 金币 + 连续天数护盾' },
-      };
-      const m = msgs[result.wheelMilestone];
-      if (m) addToast({ icon: '🎯', title: m.title, subtitle: m.subtitle });
+      const reward = getDailyWheelRewards(getTodayStr()).find(r => r.at === result.wheelMilestone);
+      const title = result.wheelMilestone === 12
+        ? '🏆 轮盘满格！'
+        : `🎯 轮盘节点：${result.wheelMilestone}/12`;
+      addToast({
+        icon: '🎯',
+        title,
+        subtitle: reward ? `今日奖励：${reward.label}` : '节点奖励已领取',
+      });
     }
   };
 
@@ -384,12 +383,8 @@ const WHEEL_R_OUTER = 100;
 const WHEEL_R_INNER = 64;
 const WHEEL_R_NODE = 114;
 
-// 里程碑节点：第 4 / 8 / 12 个任务
-const WHEEL_MILESTONES = [
-  { at: 4, index: 3, reward: 15, extra: '' },
-  { at: 8, index: 7, reward: 30, extra: '双倍券' },
-  { at: 12, index: 11, reward: 50, extra: '护盾' },
-];
+// 里程碑节点：第 4 / 8 / 12 个任务，奖励每天随机刷新
+const WHEEL_MILESTONE_INDEX: Record<number, number> = { 4: 3, 8: 7, 12: 11 };
 
 function polarPoint(cx: number, cy: number, r: number, deg: number) {
   const rad = ((deg - 90) * Math.PI) / 180;
@@ -418,7 +413,11 @@ function DailyWheelCard({ count }: { count: number }) {
   const seg = 360 / WHEEL_SEGMENTS;
   const gap = 2.4;
   const remaining = WHEEL_SEGMENTS - filled;
-  const nextMilestone = WHEEL_MILESTONES.find(m => filled < m.at);
+  const milestones = getDailyWheelRewards(getTodayStr()).map(reward => ({
+    ...reward,
+    index: WHEEL_MILESTONE_INDEX[reward.at],
+  }));
+  const nextMilestone = milestones.find(m => filled < m.at);
 
   return (
     <div className="daily-wheel-card">
@@ -449,7 +448,7 @@ function DailyWheelCard({ count }: { count: number }) {
           ))}
 
           {/* 里程碑连接线与节点 */}
-          {WHEEL_MILESTONES.map(m => {
+          {milestones.map(m => {
             const angle = (m.index + 0.5) * seg;
             const outer = polarPoint(WHEEL_CX, WHEEL_CY, WHEEL_R_OUTER + 2, angle);
             const inner = polarPoint(WHEEL_CX, WHEEL_CY, WHEEL_R_NODE - 14, angle);
@@ -461,7 +460,7 @@ function DailyWheelCard({ count }: { count: number }) {
                 <line x1={outer.x} y1={outer.y} x2={inner.x} y2={inner.y} className="daily-wheel-node-link" />
                 <circle cx={node.x} cy={node.y} r={13} className="wheel-node-bg" />
                 <text x={node.x} y={node.y} textAnchor="middle" dominantBaseline="central" className="wheel-node-text">
-                  {m.reward}
+                  {m.short}
                 </text>
               </g>
             );
@@ -485,17 +484,17 @@ function DailyWheelCard({ count }: { count: number }) {
             : `再完成 ${remaining} 个任务即可点亮整个轮盘`}
         </div>
         <div className="daily-wheel-milestones">
-          {WHEEL_MILESTONES.map(m => (
+          {milestones.map(m => (
             <div
               key={m.at}
               className={`wheel-ms-chip ${filled >= m.at ? 'reached' : ''} ${nextMilestone?.at === m.at ? 'next' : ''}`}
             >
               <span className="wheel-ms-at">{m.at}</span>
-              <span className="wheel-ms-reward">+{m.reward} 金币{m.extra ? ` · ${m.extra}` : ''}</span>
+              <span className="wheel-ms-reward">{m.icon} {m.label}</span>
             </div>
           ))}
         </div>
-        <div className="daily-wheel-hint">每天 0 点自动重置 · 完成任务获得金币</div>
+        <div className="daily-wheel-hint">每天 0 点自动重置 · 节点奖励每日随机刷新</div>
       </div>
     </div>
   );

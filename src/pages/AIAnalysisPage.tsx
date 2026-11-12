@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useStore, ANY_CATEGORY_ID } from '../store/useStore';
 import { getLevelProgress } from '../utils/gamification';
 import { CHAPTERS } from '../data/chapters';
-import { BADGES } from '../data/badges';
 import {
   IconAI, IconFlame, IconTrophy, IconWarning, IconArrowRight,
   IconCheckCircle, IconSword, IconStar, IconChart,
@@ -20,7 +19,7 @@ interface Insight {
 
 export default function AIAnalysisPage() {
   const navigate = useNavigate();
-  const { tasks, categories, userProfile, userBadges, storyProgress, dailyRecords } = useStore();
+  const { tasks, categories, userProfile, storyProgress, dailyRecords } = useStore();
 
   const levelInfo = getLevelProgress(userProfile.totalPoints);
   const todayStr = new Date().toISOString().substring(0, 10);
@@ -30,8 +29,6 @@ export default function AIAnalysisPage() {
   const overdueTasks = pendingTasks.filter(t => t.dueDate && t.dueDate < todayStr);
   const highPriorityPending = pendingTasks.filter(t => t.priority === 'high');
   const currentChapter = CHAPTERS.find(c => c.id === storyProgress.currentChapter);
-  const earnedBadges = BADGES.filter(b => userBadges.includes(b.id));
-  const lockedBadges = BADGES.filter(b => !userBadges.includes(b.id));
 
   // 7天趋势数据
   const weekData = useMemo(() => {
@@ -98,7 +95,7 @@ export default function AIAnalysisPage() {
         type: 'tip',
         icon: <IconFlame size={18} color="#e17055" />,
         title: `连胜 ${userProfile.currentStreak} 天`,
-        desc: `再坚持 ${3 - userProfile.currentStreak} 天获得「连续三天」徽章`,
+        desc: `再坚持 ${3 - userProfile.currentStreak} 天，保持连胜势头`,
       });
     }
 
@@ -150,9 +147,6 @@ export default function AIAnalysisPage() {
 
     return list.slice(0, 5);
   }, [overdueTasks, doingTasks, highPriorityPending, userProfile, currentChapter, storyProgress, pendingTasks]);
-
-  // 下一个徽章
-  const nextBadge = lockedBadges[0];
 
   // 今日数据
   const todayRecord = dailyRecords.find(r => r.date === todayStr);
@@ -353,29 +347,6 @@ export default function AIAnalysisPage() {
             </div>
           </section>
         )}
-
-        {/* 徽章进度 */}
-        <section className="ai-section">
-          <h2 className="ai-section-title">
-            <IconStar size={16} color="#f39c12" />
-            徽章进度
-          </h2>
-          <div className="ai-badge-card">
-            <div className="ai-badge-progress">
-              <span className="ai-badge-count">{earnedBadges.length}<small>/{BADGES.length}</small></span>
-              <div className="ai-badge-bar">
-                <div className="ai-badge-fill" style={{ width: `${(earnedBadges.length / BADGES.length) * 100}%` }} />
-              </div>
-            </div>
-            {nextBadge && (
-              <div className="ai-badge-next">
-                <span className="ai-badge-next-label">下一个目标</span>
-                <span className="ai-badge-next-name">{nextBadge.name}</span>
-                <span className="ai-badge-next-desc">{nextBadge.description}</span>
-              </div>
-            )}
-          </div>
-        </section>
 
         {/* 今日数据 */}
         {todayRecord && (

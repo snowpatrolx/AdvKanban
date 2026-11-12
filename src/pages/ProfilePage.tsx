@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStore, APP_VERSION } from '../store/useStore';
+import { useStore, APP_VERSION, getShoppingTaskPrice } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { getLevelProgress, LEVELS } from '../utils/gamification';
-import { BADGES } from '../data/badges';
 import type { ShopEffect } from '../types';
 import {
-  IconFlame, IconTag, IconDatabase, IconArrowRight, IconTrophy, IconCheck,
-  IconSeedling, IconStarBadge, IconGem, IconEdit, IconBooks, IconDragon, IconAI,
-  IconFolder, IconCoins,
+  IconFlame, IconTag, IconDatabase, IconArrowRight, IconAI,
+  IconFolder, IconCoins, IconCart,
 } from '../components/common/Icons';
 import './ProfilePage.css';
 
@@ -22,8 +20,8 @@ const SHOP_EFFECT_OPTIONS: { value: ShopEffect; label: string }[] = [
 export default function ProfilePage() {
   const navigate = useNavigate();
   const {
-    userProfile, userBadges, tasks, archiveCompletedTasks,
-    shopItems, buyShopItem, updateShopItem, addShopItem, deleteShopItem, resetShopItems,
+    userProfile, tasks, archiveCompletedTasks,
+    shopItems, buyShopItem, buyShoppingTask, updateShopItem, addShopItem, deleteShopItem, resetShopItems,
   } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const levelInfo = getLevelProgress(userProfile.totalPoints);
@@ -59,6 +57,17 @@ export default function ProfilePage() {
       effect: 'streakShield',
       enabled: true,
     });
+  };
+
+  // 购物任务（添加到金币商城）
+  const shoppingTasks = tasks.filter(t => !t.parentId && !t.archived && t.status === 'shopping');
+
+  const handleBuyShopping = (taskId: string) => {
+    if (buyShoppingTask(taskId)) {
+      addToast({ icon: '◉', title: '购买成功', subtitle: '购物任务已完成' });
+    } else {
+      addToast({ icon: '!', title: '无法购买', subtitle: '金币不足' });
+    }
   };
 
   return (
@@ -228,34 +237,40 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {shoppingTasks.length > 0 && (
+          <div className="coin-shop-shopping">
+            <div className="coin-shop-shopping-title">
+              <IconCart size={15} color="#e84393" /> 购物清单
+              <span>购买后自动完成任务</span>
+            </div>
+            <div className="coin-shop-list">
+              {shoppingTasks.map(task => {
+                const price = getShoppingTaskPrice(task);
+                const disabled = userProfile.coins < price;
+                return (
+                  <button
+                    key={task.id}
+                    className={`coin-shop-btn shopping ${disabled ? 'disabled' : ''}`}
+                    onClick={() => handleBuyShopping(task.id)}
+                    disabled={disabled}
+                  >
+                    <div className="coin-shop-info">
+                      <span className="coin-shop-name">{task.title}</span>
+                      <span className="coin-shop-desc">{task.dueDate ? `截止 ${task.dueDate}` : '购物任务'}</span>
+                    </div>
+                    <span className="coin-shop-cost"><IconCoins size={14} color="#ffd93d" /> {price}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {userProfile.streakShields > 0 && (
           <div className="coin-shop-buff">
             🛡 护盾 × {userProfile.streakShields}
           </div>
         )}
-      </div>
-
-      {/* 徽章 */}
-      <div className="card">
-        <div className="profile-section-header">
-          <h3>
-            <IconTrophy size={18} color="var(--color-primary)" /> 徽章 ({userBadges.length}/{BADGES.length})
-          </h3>
-        </div>
-        <div className="profile-badge-grid">
-          {BADGES.map(badge => {
-            const earned = userBadges.includes(badge.id);
-            return (
-              <div key={badge.id} className={`profile-badge ${earned ? 'earned' : 'locked'}`}>
-                <div className="profile-badge-icon-wrap">
-                  <BadgeIcon iconKey={badge.icon} earned={earned} />
-                </div>
-                <span className="profile-badge-name">{badge.name}</span>
-                <span className="profile-badge-desc">{badge.description}</span>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       {/* 菜单 */}
@@ -293,31 +308,4 @@ export default function ProfilePage() {
       </div>
     </div>
   );
-}
-
-// 徽章图标映射 - 使用平面化SVG图标
-function BadgeIcon({ iconKey, earned }: { iconKey: string; earned: boolean }) {
-  const color = earned ? 'var(--color-primary)' : 'var(--color-text-light)';
-  const size = 28;
-
-  switch (iconKey) {
-    case 'seedling':
-      return <IconSeedling size={size} color={color} />;
-    case 'star':
-      return <IconStarBadge size={size} color={color} />;
-    case 'trophy':
-      return <IconTrophy size={size} color={color} />;
-    case 'flame':
-      return <IconFlame size={size} color={color} />;
-    case 'gem':
-      return <IconGem size={size} color={color} />;
-    case 'edit':
-      return <IconEdit size={size} color={color} />;
-    case 'books':
-      return <IconBooks size={size} color={color} />;
-    case 'dragon':
-      return <IconDragon size={size} color={color} />;
-    default:
-      return <IconCheck size={size} color={color} />;
-  }
 }

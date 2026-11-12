@@ -369,6 +369,34 @@
   color: var(--color-text-light);
 }
 
+/* 购物任务 */
+.coin-shop-shopping {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.coin-shop-shopping-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.coin-shop-shopping-title span {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--color-text-light);
+}
+
+.coin-shop-btn.shopping {
+  border-left: 3px solid #e84393;
+}
+
 /* 徽章网格 */
 .profile-badge-grid {
   display: grid;

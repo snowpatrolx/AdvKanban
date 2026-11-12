@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { ConfirmDialog } from '../components/common/Modal';
-import { BADGES } from '../data/badges';
 import {
   IconBack, IconTrash, IconPlus, IconCheckCircle, IconRepeat, IconSubtask, IconCheck, IconEdit, IconCalendar,
 } from '../components/common/Icons';
@@ -89,10 +88,6 @@ export default function TaskDetailPage() {
         if (result.pointsEarned > 0) {
           addToast({ icon: '★', title: `+${result.pointsEarned} 经验值！` });
         }
-        result.newBadges.forEach(badgeId => {
-          const badge = BADGES.find(b => b.id === badgeId);
-          if (badge) addToast({ icon: '★', title: `获得徽章：${badge.name}` });
-        });
         if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });
       }
       addToast({ icon: '✓', title: '任务已保存' });
