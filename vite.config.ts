@@ -2,8 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// 默认部署在 GitHub Pages 子路径；其他静态托管可用 VITE_BASE=/ 覆盖
+const base = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.VITE_BASE || '/AdvKanban/'
+
 export default defineConfig({
-  base: '/AdvKanban/',
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -16,8 +19,8 @@ export default defineConfig({
         theme_color: '#6c5ce7',
         background_color: '#0f0e17',
         display: 'standalone',
-        start_url: '/AdvKanban/',
-        scope: '/AdvKanban/',
+        start_url: base,
+        scope: base,
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
