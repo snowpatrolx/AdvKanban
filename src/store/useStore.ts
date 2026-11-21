@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
   Task, Category, Knowledge, Note, UserProfile, StoryProgress, StoryLog, DailyRecord,
-  TaskStatus, TaskPriority, RepeatType, LogType, ShopItem, FarmPlot,
+  TaskStatus, TaskPriority, RepeatType, LogType, ShopItem, FarmPlot, FarmBuildings,
 } from '../types';
 import { generateId, getTodayStr } from '../utils/id';
 import {
@@ -28,7 +28,7 @@ interface StoreState {
   addTask: (data: Partial<Task>) => string;
   updateTask: (id: string, data: Partial<Task>) => void;
   deleteTask: (id: string) => void;
-  toggleTaskComplete: (id: string) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null; wheelCoinsBonus: number; wheelMilestone: number | null };
+  toggleTaskComplete: (id: string) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null; wheelCoinsBonus: number; wheelMilestone: number | null; shoppingCost?: number; blockedByCoins?: boolean };
   reorderTasks: (sourceId: string, targetId: string) => void;
   setTaskStatus: (id: string, status: TaskStatus) => void;
   archiveTask: (id: string) => void;
@@ -82,25 +82,38 @@ interface StoreState {
 
   // 家园农田
   farm: FarmPlot[];
+  farmBuildings: FarmBuildings;
   plantCrop: (plotId: number, cropKey: string) => boolean;
   harvestCrop: (plotId: number) => number;
+  upgradeBuilding: (key: keyof FarmBuildings) => boolean;
 
   // 互动
   adventureOption: (optionId: string) => { bossDamage: number; message: string; bossDefeated: boolean; cost: number; coinsGained: number; weakened: boolean; boosted: boolean };
 
   // 内部
-  _processTaskCompletion: (task: Task) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null; wheelCoinsBonus: number; wheelMilestone: number | null };
+  _processTaskCompletion: (task: Task) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null; wheelCoinsBonus: number; wheelMilestone: number | null; shoppingCost?: number };
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.21';
+export const APP_VERSION = '1.22';
 
 // 家园农田作物配置
 export const FARM_CROPS: Record<string, { name: string; emoji: string; cost: number; required: number; reward: number }> = {
   wheat: { name: '小麦', emoji: '🌾', cost: 20, required: 3, reward: 32 },
   carrot: { name: '胡萝卜', emoji: '🥕', cost: 35, required: 5, reward: 60 },
+  corn: { name: '玉米', emoji: '🌽', cost: 45, required: 6, reward: 82 },
   starfruit: { name: '星光果', emoji: '✨', cost: 60, required: 8, reward: 110 },
+  pumpkin: { name: '南瓜', emoji: '🎃', cost: 85, required: 10, reward: 165 },
 };
+
+// 家园建筑配置
+export const FARM_BUILDINGS: Record<keyof FarmBuildings, { name: string; emoji: string; desc: string; max: number; baseCost: number }> = {
+  barn: { name: '谷仓', emoji: '🏚️', desc: '每级收获金币 +15%', max: 3, baseCost: 60 },
+  windmill: { name: '风车', emoji: '🌀', desc: '每级成熟所需任务 -1', max: 3, baseCost: 80 },
+  workshop: { name: '工坊', emoji: '🔨', desc: '每级种子费用 -10%', max: 3, baseCost: 100 },
+};
+
+const defaultFarmBuildings: FarmBuildings = { barn: 0, windmill: 0, workshop: 0 };
 
 const defaultShopItems: ShopItem[] = [
   { id: 'shop-shield', name: '连续天数护盾', desc: '下次断签自动保持天数', cost: 50, icon: '🛡', effect: 'streakShield', enabled: true },
@@ -109,7 +122,7 @@ const defaultShopItems: ShopItem[] = [
   { id: 'shop-quick', name: '任务加速', desc: '立即完成一个最高优先级任务', cost: 200, icon: '⚡', effect: 'quickComplete', enabled: true },
 ];
 
-const defaultFarm: FarmPlot[] = [1, 2, 3].map(id => ({
+const defaultFarm: FarmPlot[] = [1, 2, 3, 4, 5, 6].map(id => ({
   id, crop: null, progress: 0, required: 0, cost: 0, reward: 0,
 }));
 
@@ -277,6 +290,7 @@ export const useStore = create<StoreState>()(
       storyLogs: [],
       shopItems: defaultShopItems,
       farm: defaultFarm,
+      farmBuildings: defaultFarmBuildings,
       addTask: (data) => {
         const id = generateId();
         const now = new Date().toISOString();
@@ -326,6 +340,18 @@ export const useStore = create<StoreState>()(
             ),
           }));
           return { pointsEarned: 0, coinsEarned: 0, newBadges: [], bossDefeated: false, storyUnlocked: null, wheelCoinsBonus: 0, wheelMilestone: null };
+        }
+
+        // 购物任务：完成时需要消耗金币，金币不足则阻止完成
+        if (task.status === 'shopping') {
+          const price = getShoppingTaskPrice(task);
+          if (get().userProfile.coins < price) {
+            return {
+              pointsEarned: 0, coinsEarned: 0, newBadges: [], bossDefeated: false,
+              storyUnlocked: null, wheelCoinsBonus: 0, wheelMilestone: null,
+              shoppingCost: price, blockedByCoins: true,
+            };
+          }
         }
 
         return get()._processTaskCompletion(task);
@@ -391,12 +417,14 @@ export const useStore = create<StoreState>()(
           coinsEarned *= 2;
           consumeCoinDouble = true;
         }
+        // 购物任务完成时需要消耗金币
+        const shoppingCost = task.status === 'shopping' ? getShoppingTaskPrice(task) : 0;
 
         // 更新用户资料
         const newCompletedCount = profile.completedTaskCount + 1;
         const newTotalPoints = profile.totalPoints + pointsEarned;
         const newLevel = getLevelByPoints(newTotalPoints).level;
-        const newCoins = profile.coins + coinsEarned;
+        const newCoins = Math.max(0, profile.coins + coinsEarned - shoppingCost);
 
         let newProfileState: UserProfile = {
           ...profile,
@@ -589,7 +617,7 @@ export const useStore = create<StoreState>()(
           farm: newFarm,
         });
 
-        return { pointsEarned, coinsEarned, newBadges, bossDefeated, storyUnlocked, wheelCoinsBonus, wheelMilestone: highestMilestoneCrossed };
+        return { pointsEarned, coinsEarned, newBadges, bossDefeated, storyUnlocked, wheelCoinsBonus, wheelMilestone: highestMilestoneCrossed, shoppingCost };
       },
 
       reorderTasks: (sourceId, targetId) => {
@@ -956,6 +984,7 @@ export const useStore = create<StoreState>()(
           storyLogs: state.storyLogs,
           shopItems: state.shopItems,
           farm: state.farm,
+          farmBuildings: state.farmBuildings,
           exportTime: new Date().toISOString(),
           version: APP_VERSION,
         };
@@ -977,6 +1006,7 @@ export const useStore = create<StoreState>()(
             storyLogs: data.storyLogs || [],
             shopItems: data.shopItems || defaultShopItems,
             farm: data.farm || defaultFarm,
+            farmBuildings: data.farmBuildings || defaultFarmBuildings,
           });
           return true;
         } catch {
@@ -997,6 +1027,7 @@ export const useStore = create<StoreState>()(
           storyLogs: [],
           shopItems: defaultShopItems,
           farm: defaultFarm,
+          farmBuildings: defaultFarmBuildings,
         });
       },
 
@@ -1120,13 +1151,10 @@ export const useStore = create<StoreState>()(
         const state = get();
         const task = state.tasks.find(t => t.id === taskId && t.status === 'shopping' && !t.archived);
         if (!task) return false;
-        const price = getShoppingTaskPrice(task);
-        if (state.userProfile.coins < price) return false;
-        set({
-          userProfile: { ...state.userProfile, coins: state.userProfile.coins - price },
-        });
-        get().toggleTaskComplete(taskId);
-        return true;
+        // 金币是否足够由 toggleTaskComplete 统一校验并扣除
+        if (state.userProfile.coins < getShoppingTaskPrice(task)) return false;
+        const result = get().toggleTaskComplete(taskId);
+        return !result.blockedByCoins;
       },
 
       updateShopItem: (id, data) => {
@@ -1156,11 +1184,15 @@ export const useStore = create<StoreState>()(
         if (!crop) return false;
         const plot = state.farm.find(p => p.id === plotId);
         if (!plot || plot.crop) return false;
-        if (state.userProfile.coins < crop.cost) return false;
+        // 建筑加成：工坊降低种子费用，风车减少成熟所需任务，谷仓提高收获金币
+        const actualCost = Math.max(1, Math.round(crop.cost * (1 - 0.1 * state.farmBuildings.workshop)));
+        if (state.userProfile.coins < actualCost) return false;
+        const required = Math.max(1, crop.required - state.farmBuildings.windmill);
+        const reward = Math.round(crop.reward * (1 + 0.15 * state.farmBuildings.barn));
         set({
-          userProfile: { ...state.userProfile, coins: state.userProfile.coins - crop.cost },
+          userProfile: { ...state.userProfile, coins: state.userProfile.coins - actualCost },
           farm: state.farm.map(p => p.id === plotId
-            ? { ...p, crop: cropKey, progress: 0, required: crop.required, cost: crop.cost, reward: crop.reward }
+            ? { ...p, crop: cropKey, progress: 0, required, cost: actualCost, reward }
             : p),
         });
         return true;
@@ -1179,6 +1211,21 @@ export const useStore = create<StoreState>()(
             : p),
         });
         return reward;
+      },
+
+      // 家园建设：升级建筑（谷仓 / 风车 / 工坊）
+      upgradeBuilding: (key) => {
+        const state = get();
+        const config = FARM_BUILDINGS[key];
+        const level = state.farmBuildings[key];
+        if (level >= config.max) return false;
+        const cost = config.baseCost * (level + 1);
+        if (state.userProfile.coins < cost) return false;
+        set({
+          userProfile: { ...state.userProfile, coins: state.userProfile.coins - cost },
+          farmBuildings: { ...state.farmBuildings, [key]: level + 1 },
+        });
+        return true;
       },
 
       // 冒险章节互动：消耗金币选择选项，产生伤害 / 削弱 / 金币效果
@@ -1321,7 +1368,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'quest-planner-storage',
-      version: 12,
+      version: 13,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
@@ -1473,6 +1520,23 @@ export const useStore = create<StoreState>()(
               currentChapter: current,
               unlockedChapters: unlocked,
             };
+          }
+        }
+
+        // v12 -> v13: 家园建筑与农田扩建（3 块 -> 6 块）
+        if (version < 13) {
+          if (!state.farmBuildings) state.farmBuildings = defaultFarmBuildings;
+          if (!state.farm) {
+            state.farm = defaultFarm;
+          } else {
+            const plots = [...state.farm].slice(0, 6);
+            const existingIds = new Set(plots.map(p => p.id));
+            for (let id = 1; id <= 6; id++) {
+              if (!existingIds.has(id)) {
+                plots.push({ id, crop: null, progress: 0, required: 0, cost: 0, reward: 0 });
+              }
+            }
+            state.farm = plots.sort((a, b) => a.id - b.id);
           }
         }
 

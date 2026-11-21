@@ -73,18 +73,28 @@ export default function TaskDetailPage() {
       addToast({ icon: '✓', title: '任务已创建' });
     } else {
       const wasDone = existing?.status === 'done';
+      const shouldComplete = status === 'done' && !wasDone;
       updateTask(id!, {
         title: title.trim(),
         description: description.trim(),
-        status,
+        // 完成任务交给 toggleTaskComplete 处理，确保金币/经验/购物扣费只结算一次
+        status: shouldComplete ? (existing?.status || 'todo') : status,
         priority,
         categoryId: categoryId || null,
         dueDate: dueDate || null,
         ...repeatData,
       });
 
-      if (!wasDone && status === 'done') {
+      if (shouldComplete) {
         const result = toggleTaskComplete(id!);
+        if (result.blockedByCoins) {
+          addToast({ icon: '!', title: '金币不足', subtitle: `完成购物任务需要 ${result.shoppingCost} 金币` });
+          navigate('/');
+          return;
+        }
+        if (result.shoppingCost && result.shoppingCost > 0) {
+          addToast({ icon: '◉', title: `购物完成 -${result.shoppingCost} 金币` });
+        }
         if (result.pointsEarned > 0) {
           addToast({ icon: '★', title: `+${result.pointsEarned} 经验值！` });
         }

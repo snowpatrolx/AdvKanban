@@ -33,6 +33,12 @@ export default function KanbanPage() {
     const map: Record<TaskStatus, Task[]> = { todo: [], doing: [], daily: [], shopping: [], done: [] };
     tasks.forEach(t => map[t.status].push(t));
     Object.values(map).forEach(arr => arr.sort((a, b) => a.order - b.order));
+    // 已完成任务按完成时间倒序：当日完成的排在最上面
+    map.done.sort((a, b) => {
+      const ta = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+      const tb = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+      return tb - ta;
+    });
     return map;
   }, [tasks]);
 
@@ -66,6 +72,13 @@ export default function KanbanPage() {
 
     if (targetStatus === 'done' && task.status !== 'done') {
       const result = useStore.getState().toggleTaskComplete(task.id);
+      if (result.blockedByCoins) {
+        addToast({ icon: '!', title: '金币不足', subtitle: `完成购物任务需要 ${result.shoppingCost} 金币` });
+        return;
+      }
+      if (result.shoppingCost && result.shoppingCost > 0) {
+        addToast({ icon: '◉', title: `购物完成 -${result.shoppingCost} 金币` });
+      }
       if (result.pointsEarned > 0) {
         addToast({ icon: '⭐', title: `+${result.pointsEarned} 经验值！` });
       }

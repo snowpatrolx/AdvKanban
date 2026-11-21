@@ -94,6 +94,13 @@ export default function WheelHomePage() {
 
   const handleToggle = (id: string) => {
     const result = toggleTaskComplete(id);
+    if (result.blockedByCoins) {
+      addToast({ icon: '!', title: '金币不足', subtitle: `完成购物任务需要 ${result.shoppingCost} 金币` });
+      return;
+    }
+    if (result.shoppingCost && result.shoppingCost > 0) {
+      addToast({ icon: '◉', title: `购物完成 -${result.shoppingCost} 金币` });
+    }
     if (result.pointsEarned > 0) addToast({ icon: '★', title: `+${result.pointsEarned} 经验值！` });
     if (result.coinsEarned > 0) addToast({ icon: '◉', title: `+${result.coinsEarned} 金币` });
     if (result.bossDefeated) addToast({ icon: '★', title: 'Boss 已击败！' });

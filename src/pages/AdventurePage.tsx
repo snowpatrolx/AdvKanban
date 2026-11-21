@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useStore, FARM_CROPS } from '../store/useStore';
+import { useStore, FARM_CROPS, FARM_BUILDINGS } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import { CHAPTERS } from '../data/chapters';
 import { IconCheck, IconPin, IconLock, IconMap, IconSword, IconBook, IconCoins, IconSeedling } from '../components/common/Icons';
@@ -39,7 +39,7 @@ function getOptionTag(option: { effect?: string; damage: number; weakenMultiplie
 }
 
 export default function AdventurePage() {
-  const { storyProgress, storyLogs, userProfile, knowledge, adventureOption, farm, plantCrop, harvestCrop } = useStore();
+  const { storyProgress, storyLogs, userProfile, knowledge, adventureOption, farm, farmBuildings, plantCrop, harvestCrop, upgradeBuilding } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const [activeTab, setActiveTab] = useState<'map' | 'logs'>('logs');
   const [interactMsg, setInteractMsg] = useState<string | null>(null);
@@ -106,12 +106,21 @@ export default function AdventurePage() {
     }, 300);
   };
 
+  // 农田：建筑加成后的实际种子费用 / 成熟所需任务 / 收获金币
+  const cropCost = (cost: number) => Math.max(1, Math.round(cost * (1 - 0.1 * farmBuildings.workshop)));
+  const cropRequired = (required: number) => Math.max(1, required - farmBuildings.windmill);
+  const cropReward = (reward: number) => Math.round(reward * (1 + 0.15 * farmBuildings.barn));
+
   // 农田：播种
   const handlePlant = (plotId: number, cropKey: string) => {
     const crop = FARM_CROPS[cropKey];
     if (!crop) return;
     if (plantCrop(plotId, cropKey)) {
-      addToast({ icon: crop.emoji, title: `已种下${crop.name}`, subtitle: `完成 ${crop.required} 个任务后成熟` });
+      addToast({
+        icon: crop.emoji,
+        title: `已种下${crop.name}`,
+        subtitle: `完成 ${cropRequired(crop.required)} 个任务后成熟`,
+      });
     } else {
       addToast({ icon: '!', title: '无法播种', subtitle: '金币不足或地块已占用' });
     }
@@ -122,6 +131,17 @@ export default function AdventurePage() {
     const coins = harvestCrop(plotId);
     if (coins > 0) {
       addToast({ icon: '◉', title: `收获 +${coins} 金币`, subtitle: '农田已清空，可继续播种' });
+    }
+  };
+
+  // 建筑：升级
+  const handleUpgrade = (key: keyof typeof FARM_BUILDINGS) => {
+    const building = FARM_BUILDINGS[key];
+    const level = farmBuildings[key];
+    if (upgradeBuilding(key)) {
+      addToast({ icon: building.emoji, title: `${building.name}升到 ${level + 1} 级`, subtitle: building.desc });
+    } else {
+      addToast({ icon: '!', title: '无法升级', subtitle: level >= building.max ? '已达到最高等级' : '金币不足' });
     }
   };
 
@@ -309,11 +329,11 @@ export default function AdventurePage() {
                         <button
                           key={key}
                           className="farm-plant-btn"
-                          disabled={userProfile.coins < c.cost}
+                          disabled={userProfile.coins < cropCost(c.cost)}
                           onClick={() => handlePlant(plot.id, key)}
                         >
                           <span className="farm-plant-label">{c.emoji} {c.name}</span>
-                          <span className="farm-plant-cost">{c.cost} 金币 · {c.required} 任务</span>
+                          <span className="farm-plant-cost">{cropCost(c.cost)} 金币 · {cropRequired(c.required)} 任务 · +{cropReward(c.reward)}</span>
                         </button>
                       ))}
                     </div>
@@ -322,6 +342,49 @@ export default function AdventurePage() {
               </div>
             );
           })}
+        </div>
+
+        {/* 家园建筑 */}
+        <div className="adventure-buildings">
+          <div className="adventure-buildings-header">
+            <h4 className="adventure-buildings-title">家园建筑</h4>
+            <span className="adventure-buildings-hint">升级后对之后播种的作物生效</span>
+          </div>
+          <div className="adventure-building-list">
+            {(Object.keys(FARM_BUILDINGS) as (keyof typeof FARM_BUILDINGS)[]).map(key => {
+              const building = FARM_BUILDINGS[key];
+              const level = farmBuildings[key];
+              const maxed = level >= building.max;
+              const upgradeCost = building.baseCost * (level + 1);
+              const affordable = userProfile.coins >= upgradeCost;
+              return (
+                <div key={key} className={`building-card ${maxed ? 'maxed' : ''}`}>
+                  <div className="building-card-top">
+                    <span className="building-emoji">{building.emoji}</span>
+                    <div className="building-info">
+                      <span className="building-name">
+                        {building.name}
+                        <span className="building-level">Lv.{level}/{building.max}</span>
+                      </span>
+                      <span className="building-desc">{building.desc}</span>
+                    </div>
+                  </div>
+                  <div className="building-level-dots">
+                    {Array.from({ length: building.max }).map((_, i) => (
+                      <span key={i} className={`building-dot ${i < level ? 'active' : ''}`} />
+                    ))}
+                  </div>
+                  <button
+                    className="building-upgrade-btn"
+                    disabled={maxed || !affordable}
+                    onClick={() => handleUpgrade(key)}
+                  >
+                    {maxed ? '已满级' : `升级 · ${upgradeCost} 金币`}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

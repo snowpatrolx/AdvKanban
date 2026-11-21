@@ -23,9 +23,10 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '穿过村庄外的草地，你来到了翠绿森林。古老的树木遮天蔽日，一个低沉的声音在林间回荡："闯入者……可恶的人类……"森林木灵挡住了你的去路。',
     bossDefeatedText: '木灵化为点点绿光消散，森林恢复了宁静。一条小路通向远方的沼泽。',
     options: [
-      { id: 'slash', label: '挥剑斩击', cost: 5, damage: 20, description: '普通一击，稳定输出' },
-      { id: 'fire', label: '点燃火把', cost: 10, damage: 45, description: '木灵怕火，造成大量伤害' },
       { id: 'wind', label: '风之律动', cost: 15, damage: 0, effect: 'weaken', weakenMultiplier: 1.5, weakenTurns: 3, description: '借森林之风扰乱木灵，接下来 3 次出手伤害 ×1.5' },
+      { id: 'vine', label: '藤蔓束缚', cost: 25, damage: 0, effect: 'weaken', weakenMultiplier: 1.8, weakenTurns: 4, description: '藤蔓缠住木灵四肢，接下来 4 次出手伤害 ×1.8' },
+      { id: 'gather', label: '林间采集', cost: 0, damage: 0, effect: 'loot', lootCoins: 20, description: '采集林间浆果与草药，获得 20 金币' },
+      { id: 'rally', label: '战意鼓舞', cost: 20, damage: 0, effect: 'boost', boostBonus: 10, boostTurns: 3, description: '鼓舞士气，接下来 3 次出手附加 10 点伤害' },
     ],
   },
   {
@@ -39,10 +40,10 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '迷雾沼泽弥漫着腐朽的气息，脚下的泥泞让你步履维艰。远处传来诡异的笑声，沼泽巫女从浓雾中现身："又来了一个送死的冒险者……"',
     bossDefeatedText: '巫女的诅咒被打破，沼泽中的迷雾渐渐消散。远处隐约可见古代遗迹的轮廓。',
     options: [
-      { id: 'dagger', label: '淬毒匕首', cost: 10, damage: 45, description: '以毒攻毒，克制巫女' },
-      { id: 'light', label: '净化之光', cost: 18, damage: 80, description: '驱散黑暗，灼伤巫女' },
       { id: 'thorn', label: '荆棘缠绕', cost: 25, damage: 0, effect: 'weaken', weakenMultiplier: 1.6, weakenTurns: 3, description: '荆棘束缚巫女，接下来 3 次出手伤害 ×1.6' },
+      { id: 'mist', label: '迷雾屏障', cost: 35, damage: 0, effect: 'weaken', weakenMultiplier: 2, weakenTurns: 2, description: '以迷雾扰乱巫女视线，接下来 2 次出手伤害 ×2' },
       { id: 'relic', label: '搜刮祭坛', cost: 0, damage: 0, effect: 'loot', lootCoins: 25, description: '拾取祭坛上的遗物，获得 25 金币' },
+      { id: 'charm', label: '巫术鼓舞', cost: 20, damage: 0, effect: 'boost', boostBonus: 15, boostTurns: 3, description: '借用巫术余韵，接下来 3 次出手附加 15 点伤害' },
     ],
   },
   {
@@ -57,9 +58,9 @@ export const CHAPTERS: StoryChapter[] = [
     bossDefeatedText: '守卫轰然倒塌，扬起漫天尘土。遗迹深处的一道门缓缓打开，通向龙之巢穴。',
     options: [
       { id: 'rune', label: '符文破解', cost: 15, damage: 0, effect: 'weaken', weakenMultiplier: 1.6, weakenTurns: 4, description: '解析符文削弱守卫，接下来 4 次出手伤害 ×1.6' },
-      { id: 'hammer', label: '巨锤重击', cost: 22, damage: 100, description: '以蛮力击碎石质身躯' },
-      { id: 'collapse', label: '遗迹崩塌', cost: 35, damage: 160, description: '触发机关，让遗迹自身压垮守卫' },
       { id: 'chest', label: '撬开宝箱', cost: 0, damage: 0, effect: 'loot', lootCoins: 35, description: '撬开遗迹宝箱，获得 35 金币' },
+      { id: 'drum', label: '古代战鼓', cost: 25, damage: 0, effect: 'boost', boostBonus: 20, boostTurns: 4, description: '敲响古代战鼓，接下来 4 次出手附加 20 点伤害' },
+      { id: 'resonance', label: '石像共鸣', cost: 40, damage: 0, effect: 'weaken', weakenMultiplier: 2, weakenTurns: 3, description: '与石像共振扰乱守卫，接下来 3 次出手伤害 ×2' },
     ],
   },
   {
@@ -73,11 +74,10 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '龙之巢穴炽热无比，岩浆在地表流淌。一头巨大的黑色巨龙盘踞在洞穴深处——拖延之龙，混沌的根源。它睁开猩红的眼睛："你终于来了，秩序守护者。但你会像其他人一样，倒在我的脚下……"',
     bossDefeatedText: '随着最后一击，拖延之龙发出震耳欲聋的咆哮，化为灰烬消散。阳光重新照耀大陆，混沌终结，秩序恢复。你，就是传说中的英雄！',
     options: [
-      { id: 'arrow', label: '屠龙箭雨', cost: 25, damage: 110, description: '漫天箭雨射向巨龙' },
       { id: 'frost', label: '冰霜吐息', cost: 35, damage: 0, effect: 'weaken', weakenMultiplier: 1.8, weakenTurns: 3, description: '冰封龙鳞，接下来 3 次出手伤害 ×1.8' },
       { id: 'rally', label: '战意凝聚', cost: 30, damage: 0, effect: 'boost', boostBonus: 25, boostTurns: 4, description: '凝聚战意，接下来 4 次出手附加 25 点伤害' },
-      { id: 'thunder', label: '雷霆审判', cost: 50, damage: 220, description: '召唤天雷轰击巨龙' },
-      { id: 'ultimate', label: '秩序之刃', cost: 80, damage: 360, description: '汇聚秩序之力的终极一击' },
+      { id: 'hoard', label: '龙巢寻宝', cost: 0, damage: 0, effect: 'loot', lootCoins: 60, description: '在龙巢边缘搜罗散落的财宝，获得 60 金币' },
+      { id: 'scale', label: '龙鳞护佑', cost: 60, damage: 0, effect: 'boost', boostBonus: 50, boostTurns: 3, description: '借龙鳞之力强化攻势，接下来 3 次出手附加 50 点伤害' },
     ],
   },
   {
@@ -91,12 +91,10 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '大陆重归平静后，天空中出现了一座漂浮的城市。一道光柱从天而降，指引你前往新的领域。在云端之上，云之守护者正在等待新的挑战者。',
     bossDefeatedText: '云之守护者微微颔首："你已证明了自己的实力。更遥远的星辰大海在等着你。"天空之城的大门缓缓开启。',
     options: [
-      { id: 'gale', label: '烈风斩', cost: 30, damage: 135, description: '借云端烈风斩击守护者' },
-      { id: 'holy', label: '圣光裁决', cost: 45, damage: 200, description: '降下圣光审判敌人' },
       { id: 'mist', label: '云雾迷阵', cost: 50, damage: 0, effect: 'weaken', weakenMultiplier: 1.8, weakenTurns: 3, description: '云雾遮蔽守护者，接下来 3 次出手伤害 ×1.8' },
-      { id: 'plunder', label: '云端掠夺', cost: 30, damage: 60, effect: 'drain', drainCoins: 12, description: '突袭守护者并夺取云中财宝，造成 60 点伤害并获得 12 金币' },
-      { id: 'starfall', label: '流星坠落', cost: 60, damage: 270, description: '引导流星轰击天空之城' },
-      { id: 'divine', label: '神圣审判', cost: 100, damage: 450, description: '降下神圣之力终结守护者' },
+      { id: 'cloudloot', label: '云端取宝', cost: 20, damage: 0, effect: 'loot', lootCoins: 40, description: '在云层中寻获失落的宝物，获得 40 金币' },
+      { id: 'holy', label: '圣光鼓舞', cost: 40, damage: 0, effect: 'boost', boostBonus: 30, boostTurns: 4, description: '圣光加身，接下来 4 次出手附加 30 点伤害' },
+      { id: 'skychest', label: '云海宝箱', cost: 0, damage: 0, effect: 'loot', lootCoins: 70, description: '打开漂浮的云海宝箱，获得 70 金币' },
     ],
   },
   {
@@ -110,11 +108,9 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '穿过云端，你来到了星之海岸。海面倒映着漫天繁星，一条巨大的海蛇从水中跃起——深海利维坦，守护着通往星辰的秘密。',
     bossDefeatedText: '利维坦沉入深海，海面恢复平静。海面上浮现出一条星光铺就的道路，通向宇宙的尽头。',
     options: [
-      { id: 'wave', label: '浪潮之刃', cost: 40, damage: 180, description: '操控巨浪切割利维坦' },
-      { id: 'void', label: '虚空之矛', cost: 55, damage: 250, description: '凝聚虚空之力的长矛' },
       { id: 'treasure', label: '沉船宝藏', cost: 0, damage: 0, effect: 'loot', lootCoins: 80, description: '潜入沉船打捞宝藏，获得 80 金币' },
-      { id: 'nova', label: '超新星爆发', cost: 80, damage: 360, description: '引爆星辰之力' },
-      { id: 'cosmos', label: '宇宙坍缩', cost: 130, damage: 590, description: '以宇宙之力碾压海蛇' },
+      { id: 'tide', label: '潮汐压制', cost: 50, damage: 0, effect: 'weaken', weakenMultiplier: 1.8, weakenTurns: 4, description: '以潮汐缠住利维坦，接下来 4 次出手伤害 ×1.8' },
+      { id: 'star', label: '星辰鼓舞', cost: 55, damage: 0, effect: 'boost', boostBonus: 40, boostTurns: 4, description: '借星辰之力，接下来 4 次出手附加 40 点伤害' },
     ],
   },
   {
@@ -130,9 +126,8 @@ export const CHAPTERS: StoryChapter[] = [
     options: [
       { id: 'rewind', label: '时间回溯', cost: 50, damage: 0, effect: 'weaken', weakenMultiplier: 2, weakenTurns: 3, description: '回溯守望者的时间，接下来 3 次出手伤害 ×2' },
       { id: 'haste', label: '加速战意', cost: 60, damage: 0, effect: 'boost', boostBonus: 40, boostTurns: 4, description: '借时间之力加速，接下来 4 次出手附加 40 点伤害' },
-      { id: 'accel', label: '时间加速', cost: 70, damage: 320, description: '加速时间风化守望者' },
-      { id: 'paradox', label: '时空悖论', cost: 100, damage: 450, description: '制造悖论撕裂守望者' },
-      { id: 'eternity', label: '永恒冻结', cost: 160, damage: 720, description: '冻结时间，终结守望者' },
+      { id: 'vault', label: '时光宝库', cost: 0, damage: 0, effect: 'loot', lootCoins: 100, description: '从时光缝隙中取出尘封的宝物，获得 100 金币' },
+      { id: 'freeze', label: '静止结界', cost: 80, damage: 0, effect: 'weaken', weakenMultiplier: 2.2, weakenTurns: 2, description: '以静止结界封锁守望者，接下来 2 次出手伤害 ×2.2' },
     ],
   },
   {
@@ -146,11 +141,10 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '你终于来到了创世神殿。混沌之主端坐于虚空王座之上，它是一切混乱的源头，也是你命运的终点。"有趣……真有趣。那就让我看看，你能做到什么程度吧！"',
     bossDefeatedText: '混沌之主化为万千光点，融入了宇宙之中。秩序与混沌重新达到了平衡。而你，已不再只是一个冒险者——你成为了新世界的缔造者。新的冒险，才刚刚开始……',
     options: [
-      { id: 'order', label: '秩序之力', cost: 70, damage: 320, description: '以秩序之力对抗混沌' },
       { id: 'balance', label: '阴阳调和', cost: 100, damage: 0, effect: 'weaken', weakenMultiplier: 2, weakenTurns: 4, description: '调和阴阳压制混沌，接下来 4 次出手伤害 ×2' },
-      { id: 'siphon', label: '混沌汲取', cost: 40, damage: 90, effect: 'drain', drainCoins: 15, description: '汲取混沌之力化为己用，造成 90 点伤害并获得 15 金币' },
-      { id: 'creation', label: '创世之光', cost: 150, damage: 680, description: '绽放创世的光辉' },
-      { id: 'infinity', label: '无限裁决', cost: 220, damage: 990, description: '释放无限之力，终结混沌之主' },
+      { id: 'relic', label: '混沌拾遗', cost: 30, damage: 0, effect: 'loot', lootCoins: 40, description: '拾取混沌裂隙掉落的碎片，获得 40 金币' },
+      { id: 'order', label: '秩序鼓舞', cost: 70, damage: 0, effect: 'boost', boostBonus: 60, boostTurns: 4, description: '秩序之力环绕，接下来 4 次出手附加 60 点伤害' },
+      { id: 'genesis', label: '创世宝库', cost: 0, damage: 0, effect: 'loot', lootCoins: 120, description: '开启创世宝库，获得 120 金币' },
     ],
   },
   {
@@ -164,11 +158,10 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '混沌退去后，大陆边缘露出了一片荒芜的焦土。你决定在这里重建家园。可当你犁开第一块土地时，沉睡的荒原岩灵从地底苏醒，它认为开垦会破坏大地的宁静。',
     bossDefeatedText: '岩灵崩解为肥沃的土壤，荒原上冒出了第一抹新绿。你搭起木屋、围起篱笆，家园的雏形就此诞生。',
     options: [
-      { id: 'plow', label: '开垦犁刃', cost: 40, damage: 180, description: '以犁为刃，破开岩灵的外壳' },
       { id: 'irrigate', label: '引水灌溉', cost: 55, damage: 0, effect: 'weaken', weakenMultiplier: 1.8, weakenTurns: 3, description: '引水浸软岩土，接下来 3 次出手伤害 ×1.8' },
-      { id: 'seed', label: '播撒藤种', cost: 45, damage: 120, effect: 'drain', drainCoins: 20, description: '让藤蔓缠住岩灵，造成 120 点伤害并获得 20 金币' },
       { id: 'granary', label: '粮仓储备', cost: 0, damage: 0, effect: 'loot', lootCoins: 60, description: '整理旧粮仓，获得 60 金币' },
-      { id: 'sickle', label: '丰收之镰', cost: 120, damage: 520, description: '挥舞丰收之镰，收割岩灵' },
+      { id: 'fertile', label: '沃土祝福', cost: 40, damage: 0, effect: 'boost', boostBonus: 25, boostTurns: 4, description: '沃土之力加持，接下来 4 次出手附加 25 点伤害' },
+      { id: 'vine', label: '藤蔓束缚', cost: 70, damage: 0, effect: 'weaken', weakenMultiplier: 2, weakenTurns: 3, description: '藤蔓缠住岩灵，接下来 3 次出手伤害 ×2' },
     ],
   },
   {
@@ -183,10 +176,9 @@ export const CHAPTERS: StoryChapter[] = [
     bossDefeatedText: '蝗群散去，麦田保住了。你加固了粮仓、修好了风车，丰收的喜悦传遍了新家园。',
     options: [
       { id: 'scarecrow', label: '稻草人阵', cost: 60, damage: 0, effect: 'weaken', weakenMultiplier: 1.9, weakenTurns: 3, description: '布下稻草人迷惑蝗群，接下来 3 次出手伤害 ×1.9' },
-      { id: 'pesticide', label: '驱虫药剂', cost: 70, damage: 260, description: '用草木灰药剂驱散蝗群' },
-      { id: 'flame', label: '焚烧虫群', cost: 90, damage: 380, description: '点燃火把，焚尽来袭蝗群' },
       { id: 'store', label: '余粮交易', cost: 0, damage: 0, effect: 'loot', lootCoins: 90, description: '出售部分余粮，获得 90 金币' },
-      { id: 'mill', label: '风车巨刃', cost: 140, damage: 600, description: '借风车之力斩向蝗灾领主' },
+      { id: 'harvest', label: '丰收鼓舞', cost: 50, damage: 0, effect: 'boost', boostBonus: 35, boostTurns: 4, description: '丰收的喜悦鼓舞士气，接下来 4 次出手附加 35 点伤害' },
+      { id: 'repel', label: '蝗群驱散', cost: 80, damage: 0, effect: 'weaken', weakenMultiplier: 2.1, weakenTurns: 3, description: '驱散蝗群扰乱领主，接下来 3 次出手伤害 ×2.1' },
     ],
   },
   {
@@ -200,11 +192,10 @@ export const CHAPTERS: StoryChapter[] = [
     storyText: '田地和屋舍渐渐连成了城镇，越来越多的旅人在这里定居。就在你为新城奠基的那天，混沌的残影从地底涌出，想要摧毁你亲手建立的一切。',
     bossDefeatedText: '残影消散，钟楼敲响了第一声。秩序之城在阳光下拔地而起，成为所有冒险者共同的家园。',
     options: [
-      { id: 'foundation', label: '奠基之石', cost: 80, damage: 300, description: '掷出沉重的奠基石' },
       { id: 'workshop', label: '工坊协作', cost: 100, damage: 0, effect: 'boost', boostBonus: 60, boostTurns: 4, description: '工坊全力支援，接下来 4 次出手附加 60 点伤害' },
-      { id: 'market', label: '商贸繁荣', cost: 120, damage: 400, effect: 'drain', drainCoins: 30, description: '以商贸之力反击，造成 400 点伤害并获得 30 金币' },
-      { id: 'tower', label: '钟楼审判', cost: 160, damage: 700, description: '钟声化作声浪，震荡残影' },
-      { id: 'sanctuary', label: '家园庇护', cost: 240, damage: 1100, description: '汇集全城居民的心念，终结混沌残影' },
+      { id: 'market', label: '商贸繁荣', cost: 40, damage: 0, effect: 'loot', lootCoins: 80, description: '以商贸之力筹集物资，获得 80 金币' },
+      { id: 'sanctuary', label: '家园庇护', cost: 90, damage: 0, effect: 'weaken', weakenMultiplier: 2, weakenTurns: 4, description: '家园结界的压制削弱残影，接下来 4 次出手伤害 ×2' },
+      { id: 'bell', label: '钟楼鼓舞', cost: 120, damage: 0, effect: 'boost', boostBonus: 90, boostTurns: 3, description: '钟声响彻全城，接下来 3 次出手附加 90 点伤害' },
     ],
   },
 ];

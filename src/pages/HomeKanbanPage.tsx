@@ -203,6 +203,13 @@ export default function HomeKanbanPage() {
 
   const handleToggle = (id: string) => {
     const result = toggleTaskComplete(id);
+    if (result.blockedByCoins) {
+      addToast({ icon: '!', title: '金币不足', subtitle: `完成购物任务需要 ${result.shoppingCost} 金币` });
+      return;
+    }
+    if (result.shoppingCost && result.shoppingCost > 0) {
+      addToast({ icon: '◉', title: `购物完成 -${result.shoppingCost} 金币` });
+    }
     if (result.pointsEarned > 0) {
       addToast({ icon: '★', title: `+${result.pointsEarned} 经验值！` });
     }
@@ -273,6 +280,13 @@ export default function HomeKanbanPage() {
 
     if (targetStatus === 'done' && task.status !== 'done') {
       const result = useStore.getState().toggleTaskComplete(task.id);
+      if (result.blockedByCoins) {
+        addToast({ icon: '!', title: '金币不足', subtitle: `完成购物任务需要 ${result.shoppingCost} 金币` });
+        return;
+      }
+      if (result.shoppingCost && result.shoppingCost > 0) {
+        addToast({ icon: '◉', title: `购物完成 -${result.shoppingCost} 金币` });
+      }
       if (result.pointsEarned > 0) {
       addToast({ icon: '★', title: `+${result.pointsEarned} 经验值！` });
     }

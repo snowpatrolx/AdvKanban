@@ -159,6 +159,12 @@ export interface FarmPlot {
   reward: number;      // 收获金币
 }
 
+export interface FarmBuildings {
+  barn: number;      // 谷仓：收获金币加成
+  windmill: number;  // 风车：减少成熟所需任务
+  workshop: number;  // 工坊：降低种子费用
+}
+
 // ===== Store 完整状态 =====
 export interface AppData {
   tasks: Task[];
@@ -172,4 +178,5 @@ export interface AppData {
   storyLogs: StoryLog[];
   shopItems: ShopItem[];
   farm: FarmPlot[];
+  farmBuildings: FarmBuildings;
 }

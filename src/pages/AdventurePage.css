@@ -651,7 +651,7 @@
 
 .adventure-farm-plots {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
@@ -691,8 +691,8 @@
 }
 
 .farm-plant-options {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 4px;
 }
 
@@ -707,6 +707,7 @@
   background: var(--color-card);
   cursor: pointer;
   text-align: left;
+  min-width: 0;
 }
 
 .farm-plant-btn:disabled {
@@ -718,11 +719,16 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 .farm-plant-cost {
-  font-size: 9.5px;
+  font-size: 9px;
   color: var(--color-text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .farm-plot-crop {
@@ -774,6 +780,128 @@
 }
 
 .farm-harvest-btn:disabled {
+  background: var(--color-border);
+  color: var(--color-text-light);
+  cursor: not-allowed;
+}
+
+/* ===== 家园建筑 ===== */
+.adventure-buildings {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.adventure-buildings-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.adventure-buildings-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.adventure-buildings-hint {
+  font-size: 10px;
+  color: var(--color-text-light);
+}
+
+.adventure-building-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.building-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.building-card.maxed {
+  border-color: rgba(0, 184, 148, 0.5);
+  background: linear-gradient(180deg, rgba(0, 184, 148, 0.1), var(--color-bg));
+}
+
+.building-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.building-emoji {
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.building-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.building-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.building-level {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-text-light);
+}
+
+.building-desc {
+  font-size: 9.5px;
+  color: var(--color-text-light);
+  line-height: 1.3;
+}
+
+.building-level-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.building-dot {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.building-dot.active {
+  background: linear-gradient(90deg, #00b894, #55efc4);
+}
+
+.building-upgrade-btn {
+  margin-top: auto;
+  padding: 5px 6px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.building-upgrade-btn:disabled {
   background: var(--color-border);
   color: var(--color-text-light);
   cursor: not-allowed;
