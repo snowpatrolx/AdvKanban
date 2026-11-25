@@ -12,34 +12,35 @@ const LOG_TYPE_LABELS: Record<LogType, string> = {
   story: '剧情',
 };
 
-// 选项效果标签
+// 选项效果标签（冒险章节已取消所有直接伤害选项，仅保留：搜刮金币 / 获得经验 / 获得护盾 / 金币翻倍）
 const EFFECT_LABELS: Record<string, string> = {
-  damage: '伤害',
-  weaken: '削弱',
-  boost: '强化',
-  loot: '金币',
-  drain: '掠夺',
+  loot: '搜刮',
+  wisdom: '悟道',
+  favor: '祈福',
+  fortune: '祝福',
 };
 
-function getOptionTag(option: { effect?: string; damage: number; weakenMultiplier?: number; weakenTurns?: number; boostBonus?: number; boostTurns?: number; lootCoins?: number; drainCoins?: number }) {
-  const effect = option.effect || 'damage';
-  if (effect === 'weaken') {
-    return `削弱 ×${option.weakenMultiplier ?? 1.5} / ${option.weakenTurns ?? 3} 次`;
+function getOptionTag(option: { effect: string; lootCoins?: number; wisdomPoints?: number; favorShields?: number; fortuneTurns?: number }) {
+  switch (option.effect) {
+    case 'loot':    return `+${option.lootCoins ?? 0} 金币`;
+    case 'wisdom':  return `+${option.wisdomPoints ?? 0} 经验`;
+    case 'favor':   return `+${option.favorShields ?? 1} 护盾`;
+    case 'fortune': return `接下来 ${option.fortuneTurns ?? 1} 次金币翻倍`;
+    default:        return '';
   }
-  if (effect === 'boost') {
-    return `+${option.boostBonus ?? 0} 伤害 / ${option.boostTurns ?? 3} 次`;
-  }
-  if (effect === 'loot') {
-    return `+${option.lootCoins ?? 0} 金币`;
-  }
-  if (effect === 'drain') {
-    return `${option.damage} 伤害 + ${option.drainCoins ?? 0} 金币`;
-  }
-  return `${option.damage} 伤害`;
+}
+
+function getSideOptionTag(opt: { lootCoins?: number; wisdomPoints?: number; favorShields?: number; fortuneTurns?: number }) {
+  const parts: string[] = [];
+  if (opt.lootCoins) parts.push(`+${opt.lootCoins} 金币`);
+  if (opt.wisdomPoints) parts.push(`+${opt.wisdomPoints} 经验`);
+  if (opt.favorShields) parts.push(`+${opt.favorShields} 护盾`);
+  if (opt.fortuneTurns) parts.push(`+${opt.fortuneTurns} 次翻倍`);
+  return parts.join(' · ') || '无额外奖励';
 }
 
 export default function AdventurePage() {
-  const { storyProgress, storyLogs, userProfile, knowledge, adventureOption, farm, farmBuildings, plantCrop, harvestCrop, upgradeBuilding } = useStore();
+  const { storyProgress, storyLogs, userProfile, knowledge, adventureOption, unlockSideQuest, completeSideQuestOption, farm, farmBuildings, plantCrop, harvestCrop, upgradeBuilding } = useStore();
   const addToast = useToastStore(s => s.addToast);
   const [activeTab, setActiveTab] = useState<'map' | 'logs'>('logs');
   const [interactMsg, setInteractMsg] = useState<string | null>(null);
@@ -69,11 +70,11 @@ export default function AdventurePage() {
   // Boss 是否已被击败
   const bossDefeated = currentChapter ? storyProgress.defeatedBosses.includes(currentChapter.id) : false;
 
-  // 当前 Boss 的削弱 / 强化状态
-  const weaken = currentChapter ? storyProgress.bossWeaken?.[currentChapter.id] : undefined;
-  const boost = currentChapter ? storyProgress.bossBoost?.[currentChapter.id] : undefined;
   // 已使用的一次性选项
   const usedOptions = currentChapter ? (storyProgress.usedOptions?.[currentChapter.id] || []) : [];
+
+  // 当前章节的支线
+  const chapterSideQuests = currentChapter?.sideQuests || [];
 
   // 互动处理：消耗金币选择选项
   const handleOption = (optionId: string) => {
@@ -85,25 +86,34 @@ export default function AdventurePage() {
       const result = adventureOption(optionId);
       setInteractMsg(result.message);
 
-      if (result.bossDamage > 0) {
-        addToast({ icon: '⚔', title: `${result.bossDamage} 点伤害！` });
-      }
-      if (result.weakened) {
-        addToast({ icon: '↓', title: 'Boss 防御已被削弱' });
-      }
-      if (result.boosted) {
-        addToast({ icon: '↑', title: '伤害强化已生效' });
-      }
       if (result.coinsGained > 0) {
         addToast({ icon: '◉', title: `+${result.coinsGained} 金币` });
       }
-      if (result.bossDefeated) {
-        addToast({ icon: '★', title: `击败了 ${currentChapter.bossName}！` });
+      if (result.pointsGained > 0) {
+        addToast({ icon: '★', title: `+${result.pointsGained} 经验值` });
+      }
+      if (result.shieldsGained > 0) {
+        addToast({ icon: '🛡', title: `+${result.shieldsGained} 张护盾` });
+      }
+      if (result.doubleTurns > 0) {
+        addToast({ icon: '✦', title: `接下来 ${result.doubleTurns} 次任务金币翻倍` });
       }
 
       setIsAttacking(false);
       setTimeout(() => setInteractMsg(null), 3500);
     }, 300);
+  };
+
+  // 支线：解锁
+  const handleUnlockSideQuest = (sideQuestId: string) => {
+    const result = unlockSideQuest(sideQuestId);
+    addToast({ icon: '📖', title: result.message, subtitle: `奖励：+${result.rewardCoins} 金币 · +${result.rewardPoints} 经验` });
+  };
+
+  // 支线：选择选项
+  const handleSideQuestOption = (sideQuestId: string, optionId: string) => {
+    const result = completeSideQuestOption(sideQuestId, optionId);
+    addToast({ icon: '📜', title: '支线已完成', subtitle: result.message });
   };
 
   // 农田：建筑加成后的实际种子费用 / 成熟所需任务 / 收获金币
@@ -198,21 +208,7 @@ export default function AdventurePage() {
                   }}
                 />
               </div>
-              <p className="adventure-boss-hint">完成任务或子任务即可对 Boss 造成伤害，也可消耗金币选择互动选项</p>
-
-              {/* Boss 削弱状态 */}
-              {weaken && weaken.remaining > 0 && (
-                <div className="adventure-boss-weaken">
-                  防御削弱中 · 接下来 {weaken.remaining} 次出手伤害 ×{weaken.multiplier}
-                </div>
-              )}
-
-              {/* 伤害强化状态 */}
-              {boost && boost.remaining > 0 && (
-                <div className="adventure-boss-boost">
-                  伤害强化中 · 接下来 {boost.remaining} 次出手 +{boost.bonus} 伤害
-                </div>
-              )}
+              <p className="adventure-boss-hint">完成任务或子任务即可对 Boss 造成伤害，互动选项提供搜刮金币、获取经验/护盾、金币翻倍等非伤害增益</p>
 
               {/* 金币余额 */}
               <div className="adventure-coins-bar">
@@ -226,25 +222,25 @@ export default function AdventurePage() {
                 <div className="adventure-options">
                   {currentChapter.options.map(option => {
                     const canAfford = userProfile.coins >= option.cost;
-                    const effect = option.effect || 'damage';
-                    const isUsed = effect === 'loot' && usedOptions.includes(option.id);
+                    const isOneTime = option.oneTime ?? option.effect === 'loot';
+                    const isUsed = isOneTime && usedOptions.includes(option.id);
                     const disabled = isAttacking || !canAfford || isUsed;
                     return (
                       <button
                         key={option.id}
-                        className={`adventure-option-btn effect-${effect} ${disabled ? 'disabled' : ''} ${!canAfford ? 'locked' : ''} ${isUsed ? 'used' : ''}`}
+                        className={`adventure-option-btn effect-${option.effect} ${disabled ? 'disabled' : ''} ${!canAfford ? 'locked' : ''} ${isUsed ? 'used' : ''}`}
                         onClick={() => handleOption(option.id)}
                         disabled={disabled}
                       >
                         <div className="adventure-option-top">
                           <span className="adventure-option-label">
-                            <IconSword size={14} color="#fff" /> {option.label}
+                            <IconCoins size={14} color="#ffd93d" /> {option.label}
                           </span>
                           <span className="adventure-option-damage">{isUsed ? '已使用' : getOptionTag(option)}</span>
                         </div>
                         <div className="adventure-option-desc">{option.description}</div>
                         <div className="adventure-option-cost">
-                          <span className="adventure-option-effect">{EFFECT_LABELS[effect]}</span>
+                          <span className="adventure-option-effect">{EFFECT_LABELS[option.effect]}</span>
                           <IconCoins size={12} color="#ffd93d" />
                           {option.cost > 0 ? `${option.cost} 金币` : '免费'}
                         </div>
@@ -287,6 +283,68 @@ export default function AdventurePage() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 章节支线 */}
+      {currentChapter && chapterSideQuests.length > 0 && (
+        <div className="adventure-sidequests-card">
+          <div className="adventure-sidequests-header">
+            <h3 className="adventure-sidequests-title">📖 章节支线</h3>
+            <span className="adventure-sidequests-hint">独立于 Boss 的故事剧情</span>
+          </div>
+          {chapterSideQuests.map(sq => {
+            const unlocked = storyProgress.unlockedSideQuests.includes(sq.id);
+            const completed = storyProgress.completedSideQuests.includes(sq.id);
+            return (
+              <div key={sq.id} className={`sidequest-card ${completed ? 'completed' : unlocked ? 'active' : 'locked'}`}>
+                <div className="sidequest-head">
+                  <span className="sidequest-emoji">{sq.emoji}</span>
+                  <div className="sidequest-info">
+                    <div className="sidequest-title">{sq.title}</div>
+                    <div className="sidequest-sub">
+                      解锁奖励：+{sq.rewardCoins} 金币 · +{sq.rewardPoints} 经验
+                    </div>
+                  </div>
+                  {completed && <span className="sidequest-status">✓ 已完成</span>}
+                </div>
+                {!unlocked && !completed && (
+                  <button className="sidequest-unlock-btn" onClick={() => handleUnlockSideQuest(sq.id)}>
+                    解锁支线
+                  </button>
+                )}
+                {unlocked && !completed && (
+                  <>
+                    <p className="sidequest-story">{sq.storyText}</p>
+                    <div className="sidequest-options">
+                      {sq.options.map(opt => {
+                        const canAfford = userProfile.coins >= opt.cost;
+                        const disabled = !canAfford;
+                        return (
+                          <button
+                            key={opt.id}
+                            className={`sidequest-option-btn ${disabled ? 'disabled' : ''}`}
+                            onClick={() => handleSideQuestOption(sq.id, opt.id)}
+                            disabled={disabled}
+                          >
+                            <span className="sidequest-option-label">{opt.label}</span>
+                            <span className="sidequest-option-desc">{opt.description}</span>
+                            <span className="sidequest-option-rewards">{getSideOptionTag(opt)}</span>
+                            <span className="sidequest-option-cost">
+                              {opt.cost > 0 ? `${opt.cost} 金币` : '免费'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+                {completed && (
+                  <div className="sidequest-completed-text">支线「{sq.title}」中的选择已落幕，故事已记入日志。</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

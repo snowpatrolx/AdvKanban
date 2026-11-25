@@ -320,27 +320,164 @@
   color: #fff;
 }
 
-/* Boss 削弱状态 */
-.adventure-boss-weaken {
-  margin-top: 8px;
-  padding: 6px 10px;
-  background: rgba(9, 132, 227, 0.1);
-  border-left: 3px solid #0984e3;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  color: #0984e3;
+/* Boss 削弱 / 强化状态 已取消 — 留空占位避免引用 */
+
+/* 章节支线 */
+.adventure-sidequests-card {
+  margin-top: 14px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
 }
 
-/* 伤害强化状态 */
-.adventure-boss-boost {
-  margin-top: 8px;
-  padding: 6px 10px;
-  background: rgba(0, 184, 148, 0.1);
-  border-left: 3px solid #00b894;
+.adventure-sidequests-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.adventure-sidequests-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.adventure-sidequests-hint {
+  font-size: 10px;
+  color: var(--color-text-light);
+}
+
+.sidequest-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.sidequest-card:last-child { margin-bottom: 0; }
+
+.sidequest-card.completed {
+  border-color: rgba(0, 184, 148, 0.45);
+  background: linear-gradient(180deg, rgba(0, 184, 148, 0.08), var(--color-bg));
+}
+
+.sidequest-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.sidequest-emoji {
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.sidequest-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidequest-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sidequest-sub {
+  font-size: 10px;
+  color: var(--color-text-light);
+}
+
+.sidequest-status {
+  font-size: 11px;
+  font-weight: 700;
+  color: #00b894;
+}
+
+.sidequest-unlock-btn {
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sidequest-story {
+  margin: 10px 0 0;
+  padding: 10px;
+  background: rgba(108, 92, 231, 0.06);
   border-radius: var(--radius-sm);
   font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-text);
+}
+
+.sidequest-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.sidequest-option-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidequest-option-btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sidequest-option-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sidequest-option-desc {
+  font-size: 10.5px;
+  color: var(--color-text-light);
+}
+
+.sidequest-option-rewards {
+  font-size: 10.5px;
+  color: #00b894;
   font-weight: 600;
+}
+
+.sidequest-option-cost {
+  font-size: 10.5px;
+  color: #ffd93d;
+  font-weight: 700;
+}
+
+.sidequest-completed-text {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(0, 184, 148, 0.08);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
   color: #00a383;
 }
 

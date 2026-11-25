@@ -38,8 +38,10 @@ export default function HomePage() {
       });
   }, [tasks, search, filterCategory]);
 
-  const todayTasks = filteredTasks.filter(t => isToday(t.dueDate));
+  const todayTasks = filteredTasks.filter(t => isToday(t.dueDate) && !(t.status === 'daily' && t.completedAt && isToday(t.completedAt)));
   const otherTasks = filteredTasks.filter(t => !isToday(t.dueDate));
+  // 首页额外：单独列出每日任务，排除今日已完成的
+  const dailyPendingTasks = filteredTasks.filter(t => t.status === 'daily' && !(t.completedAt && isToday(t.completedAt)));
 
   const handleQuickAdd = () => {
     if (!quickTitle.trim()) return;
@@ -208,9 +210,10 @@ function TaskCard({ task, onToggle, onClick, categories }: {
   const overdue = isOverdue(task.dueDate, task.status);
   const catName = getCategoryName(categories, task.categoryId);
   const catColor = getCategoryColor(categories, task.categoryId);
+  const showCompletedDate = task.status === 'done' && task.completedAt;
 
   return (
-    <div className={`task-card ${overdue ? 'overdue' : ''}`}>
+    <div className={`task-card ${overdue ? 'overdue' : ''} ${showCompletedDate ? 'completed' : ''}`}>
       <button
         className="task-checkbox"
         onClick={(e) => { e.stopPropagation(); onToggle(task.id); }}
@@ -220,17 +223,22 @@ function TaskCard({ task, onToggle, onClick, categories }: {
       <div className="task-card-body" onClick={onClick}>
         <div className="task-card-title">{task.title}</div>
         <div className="task-card-meta">
-          {task.priority && (
+          {showCompletedDate && (
+            <span className="tag task-completed-date">
+              ✅ 完成于 {formatDate(new Date(task.completedAt!).toISOString().slice(0, 10))}
+            </span>
+          )}
+          {!showCompletedDate && task.priority && (
             <span className="tag" style={{ background: priorityColor(task.priority) + '22', color: priorityColor(task.priority) }}>
               {priorityLabel(task.priority)}
             </span>
           )}
-          {catName && (
+          {!showCompletedDate && catName && (
             <span className="tag" style={{ background: catColor + '22', color: catColor }}>
               {catName}
             </span>
           )}
-          {task.dueDate && (
+          {!showCompletedDate && task.dueDate && (
             <span className={`task-due ${overdue ? 'overdue-text' : ''}`}>
               📅 {formatDate(task.dueDate)}
             </span>

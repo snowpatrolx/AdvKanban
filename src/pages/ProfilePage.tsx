@@ -13,7 +13,6 @@ import './ProfilePage.css';
 const SHOP_EFFECT_OPTIONS: { value: ShopEffect; label: string }[] = [
   { value: 'streakShield', label: '连续天数护盾' },
   { value: 'coinDouble', label: '双倍金币券' },
-  { value: 'bossSmash', label: 'Boss 重击' },
   { value: 'quickComplete', label: '任务加速' },
 ];
 
@@ -214,7 +213,7 @@ export default function ProfilePage() {
         ) : (
           <div className="coin-shop-list">
             {shopItems.filter(item => item.enabled).map(item => {
-              const isDoubleActive = item.effect === 'coinDouble' && userProfile.pendingCoinDouble;
+              const isDoubleActive = item.effect === 'coinDouble' && userProfile.pendingCoinDoubleTurns > 0;
               const disabled = userProfile.coins < item.cost || isDoubleActive;
               return (
                 <button

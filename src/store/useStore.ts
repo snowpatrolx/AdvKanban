@@ -88,14 +88,16 @@ interface StoreState {
   upgradeBuilding: (key: keyof FarmBuildings) => boolean;
 
   // 互动
-  adventureOption: (optionId: string) => { bossDamage: number; message: string; bossDefeated: boolean; cost: number; coinsGained: number; weakened: boolean; boosted: boolean };
+  adventureOption: (optionId: string) => { message: string; cost: number; coinsGained: number; pointsGained: number; shieldsGained: number; doubleTurns: number; oneTimeUsed: boolean };
+  unlockSideQuest: (sideQuestId: string) => { message: string; rewardCoins: number; rewardPoints: number };
+  completeSideQuestOption: (sideQuestId: string, optionId: string) => { message: string; cost: number; coinsGained: number; pointsGained: number; shieldsGained: number; doubleTurns: number; sideQuestCompleted: boolean };
 
   // 内部
   _processTaskCompletion: (task: Task) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null; wheelCoinsBonus: number; wheelMilestone: number | null; shoppingCost?: number };
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.22';
+export const APP_VERSION = '1.23';
 
 // 家园农田作物配置
 export const FARM_CROPS: Record<string, { name: string; emoji: string; cost: number; required: number; reward: number }> = {
@@ -118,7 +120,6 @@ const defaultFarmBuildings: FarmBuildings = { barn: 0, windmill: 0, workshop: 0 
 const defaultShopItems: ShopItem[] = [
   { id: 'shop-shield', name: '连续天数护盾', desc: '下次断签自动保持天数', cost: 50, icon: '🛡', effect: 'streakShield', enabled: true },
   { id: 'shop-double', name: '双倍金币券', desc: '下一次完成任务金币翻倍', cost: 30, icon: '✦', effect: 'coinDouble', enabled: true },
-  { id: 'shop-boss', name: 'Boss 重击', desc: '对当前 Boss 直接造成 30 伤害', cost: 100, icon: '⚔', effect: 'bossSmash', enabled: true },
   { id: 'shop-quick', name: '任务加速', desc: '立即完成一个最高优先级任务', cost: 200, icon: '⚡', effect: 'quickComplete', enabled: true },
 ];
 
@@ -208,8 +209,7 @@ const defaultUserProfile: UserProfile = {
   lastCompletedDate: null,
   coins: 0,
   streakShields: 0,
-  pendingCoinDouble: false,
-  pendingBossDamageBonus: 0,
+  pendingCoinDoubleTurns: 0,
   wheelRewardedCount: 0,
   wheelRewardDate: null,
 };
@@ -219,9 +219,10 @@ const defaultStoryProgress: StoryProgress = {
   unlockedChapters: [1],
   bossCurrentHP: {},
   defeatedBosses: [],
-  bossWeaken: {},
-  bossBoost: {},
   usedOptions: {},
+  unlockedSideQuests: [],
+  completedSideQuests: [],
+  usedSideQuestOptions: {},
 };
 
 // 创建故事日志的辅助函数
@@ -233,35 +234,6 @@ function createLog(chapterId: number, text: string, type: LogType): StoryLog {
     type,
     createdAt: new Date().toISOString(),
   };
-}
-
-// 对 Boss 造成伤害时应用增益：削弱（倍率）与强化（固定附加伤害），并消耗对应次数
-function applyBossBuffs(
-  storyProgress: StoryProgress,
-  chapterId: number,
-  baseDamage: number,
-): { damage: number; bossWeaken: NonNullable<StoryProgress['bossWeaken']>; bossBoost: NonNullable<StoryProgress['bossBoost']> } {
-  const bossWeaken = { ...(storyProgress.bossWeaken || {}) };
-  const bossBoost = { ...(storyProgress.bossBoost || {}) };
-  let damage = baseDamage;
-
-  const weak = bossWeaken[chapterId];
-  if (weak && weak.remaining > 0) {
-    damage = Math.round(damage * weak.multiplier);
-    const remaining = weak.remaining - 1;
-    if (remaining > 0) bossWeaken[chapterId] = { multiplier: weak.multiplier, remaining };
-    else delete bossWeaken[chapterId];
-  }
-
-  const boost = bossBoost[chapterId];
-  if (boost && boost.remaining > 0) {
-    damage += boost.bonus;
-    const remaining = boost.remaining - 1;
-    if (remaining > 0) bossBoost[chapterId] = { bonus: boost.bonus, remaining };
-    else delete bossBoost[chapterId];
-  }
-
-  return { damage, bossWeaken, bossBoost };
 }
 
 // 计算重复任务的下一个截止日期（为新创建的重复任务设定对应日期）
@@ -410,12 +382,12 @@ export const useStore = create<StoreState>()(
           updatedTasks = [...updatedTasks, newTask];
         }
 
-        // 金币奖励：普通任务 10，高优先级任务 15；下一次双倍 buff 生效
+        // 金币奖励：普通任务 10，高优先级任务 15；pendingCoinDoubleTurns > 0 时翻倍并 -1
         let coinsEarned = task.priority === 'high' ? 15 : 10;
-        let consumeCoinDouble = false;
-        if (state.userProfile.pendingCoinDouble) {
+        let consumeDouble = false;
+        if (state.userProfile.pendingCoinDoubleTurns > 0) {
           coinsEarned *= 2;
-          consumeCoinDouble = true;
+          consumeDouble = true;
         }
         // 购物任务完成时需要消耗金币
         const shoppingCost = task.status === 'shopping' ? getShoppingTaskPrice(task) : 0;
@@ -436,7 +408,7 @@ export const useStore = create<StoreState>()(
           lastCompletedDate: todayStr,
           coins: newCoins,
         };
-        if (consumeCoinDouble) newProfileState.pendingCoinDouble = false;
+        if (consumeDouble) newProfileState.pendingCoinDoubleTurns = Math.max(0, state.userProfile.pendingCoinDoubleTurns - 1);
         if (consumeShield) newProfileState.streakShields = Math.max(0, profile.streakShields - 1);
 
         // 轮盘节点奖励：每天随机刷新，在 4/8/12 个任务完成时发放
@@ -467,10 +439,11 @@ export const useStore = create<StoreState>()(
                 newProfileState.streakShields = (newProfileState.streakShields || 0) + reward.amount;
                 break;
               case 'coinDouble':
-                newProfileState.pendingCoinDouble = true;
+                newProfileState.pendingCoinDoubleTurns = Math.max(newProfileState.pendingCoinDoubleTurns || 0, 1);
                 break;
               case 'bossBonus':
-                newProfileState.pendingBossDamageBonus = (newProfileState.pendingBossDamageBonus || 0) + reward.amount;
+                // 伤害相关选项已取消，此奖励改为额外连续天数护盾
+                newProfileState.streakShields = (newProfileState.streakShields || 0) + reward.amount;
                 break;
               case 'points':
                 wheelPointsBonus += reward.amount;
@@ -498,11 +471,7 @@ export const useStore = create<StoreState>()(
         if (currentChapter && currentChapter.bossName) {
           const bossMaxHP = currentChapter.bossHP;
           const bossCurrentHP = newStoryProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
-          // 完成任务造成的伤害同样享受削弱/强化效果
-          const buffed = applyBossBuffs(newStoryProgress, currentChapter.id, pointsEarned);
-          newStoryProgress.bossWeaken = buffed.bossWeaken;
-          newStoryProgress.bossBoost = buffed.bossBoost;
-          const result = calculateBossDamage(bossMaxHP, bossCurrentHP, buffed.damage);
+          const result = calculateBossDamage(bossMaxHP, bossCurrentHP, pointsEarned);
 
           newStoryProgress.bossCurrentHP = {
             ...newStoryProgress.bossCurrentHP,
@@ -511,7 +480,7 @@ export const useStore = create<StoreState>()(
 
           newStoryLogs.push(createLog(
             currentChapter.id,
-            `你完成了「${task.title}」，对${currentChapter.bossName}造成 ${buffed.damage} 点伤害！`,
+            `你完成了「${task.title}」，对${currentChapter.bossName}造成 ${pointsEarned} 点伤害！`,
             'damage',
           ));
 
@@ -780,13 +749,8 @@ export const useStore = create<StoreState>()(
         if (currentChapter && currentChapter.bossName) {
           const bossMaxHP = currentChapter.bossHP;
           const bossCurrentHP = newStoryProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
-          // 子任务伤害同样享受削弱/强化效果
-          const buffed = applyBossBuffs(newStoryProgress, currentChapter.id, basePoints);
-          newStoryProgress.bossWeaken = buffed.bossWeaken;
-          newStoryProgress.bossBoost = buffed.bossBoost;
-          bossDamage = buffed.damage;
-          const result = calculateBossDamage(bossMaxHP, bossCurrentHP, bossDamage);
-
+          const result = calculateBossDamage(bossMaxHP, bossCurrentHP, basePoints);
+          bossDamage = basePoints;
           newStoryProgress.bossCurrentHP = {
             ...newStoryProgress.bossCurrentHP,
             [currentChapter.id]: result.remainingHP,
@@ -794,7 +758,7 @@ export const useStore = create<StoreState>()(
 
           newStoryLogs.push(createLog(
             currentChapter.id,
-            `你完成了子任务「${subtask.title}」，对${currentChapter.bossName}造成 ${bossDamage} 点伤害！`,
+            `你完成了子任务「${subtask.title}」，对${currentChapter.bossName}造成 ${basePoints} 点伤害！`,
             'damage',
           ));
 
@@ -1059,70 +1023,13 @@ export const useStore = create<StoreState>()(
         }
 
         if (item.effect === 'coinDouble') {
-          if (state.userProfile.pendingCoinDouble) return false;
+          if (state.userProfile.pendingCoinDoubleTurns > 0) return false;
           set({
             userProfile: {
               ...state.userProfile,
               coins: state.userProfile.coins - cost,
-              pendingCoinDouble: true,
+              pendingCoinDoubleTurns: 1,
             },
-          });
-          return true;
-        }
-
-        if (item.effect === 'bossSmash') {
-          const currentChapter = CHAPTERS.find(c => c.id === state.storyProgress.currentChapter);
-          if (!currentChapter || !currentChapter.bossName) return false;
-          if (state.storyProgress.defeatedBosses.includes(currentChapter.id)) return false;
-
-          const BOSS_DAMAGE = 30 + (state.userProfile.pendingBossDamageBonus || 0);
-          const bossMaxHP = currentChapter.bossHP;
-          const currentHP = state.storyProgress.bossCurrentHP[currentChapter.id] ?? bossMaxHP;
-          const buffed = applyBossBuffs(state.storyProgress, currentChapter.id, BOSS_DAMAGE);
-          const result = calculateBossDamage(bossMaxHP, currentHP, buffed.damage);
-
-          const newStoryProgress = { ...state.storyProgress };
-          newStoryProgress.bossWeaken = buffed.bossWeaken;
-          newStoryProgress.bossBoost = buffed.bossBoost;
-          newStoryProgress.bossCurrentHP = {
-            ...newStoryProgress.bossCurrentHP,
-            [currentChapter.id]: result.remainingHP,
-          };
-
-          const newStoryLogs = [...state.storyLogs];
-          newStoryLogs.push(createLog(
-            currentChapter.id,
-            `你购买了 Boss 重击，对${currentChapter.bossName}造成 ${buffed.damage} 点伤害！`,
-            'damage',
-          ));
-
-          if (result.isDefeated) {
-            newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, currentChapter.id];
-            newStoryLogs.push(createLog(
-              currentChapter.id,
-              currentChapter.bossDefeatedText,
-              'story',
-            ));
-            const nextChapter = CHAPTERS.find(c => c.id === currentChapter.id + 1);
-            if (nextChapter) {
-              newStoryProgress.currentChapter = nextChapter.id;
-              newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
-              newStoryLogs.push(createLog(
-                nextChapter.id,
-                nextChapter.storyText,
-                'story',
-              ));
-            }
-          }
-
-          set({
-            userProfile: {
-              ...state.userProfile,
-              coins: state.userProfile.coins - cost,
-              pendingBossDamageBonus: 0,
-            },
-            storyProgress: newStoryProgress,
-            storyLogs: newStoryLogs,
           });
           return true;
         }
@@ -1228,97 +1135,60 @@ export const useStore = create<StoreState>()(
         return true;
       },
 
-      // 冒险章节互动：消耗金币选择选项，产生伤害 / 削弱 / 金币效果
+      // 冒险章节互动（已取消伤害相关选项，全部为 loot / wisdom / favor / fortune）
       adventureOption: (optionId) => {
         const state = get();
         const currentChapter = CHAPTERS.find(c => c.id === state.storyProgress.currentChapter);
-        if (!currentChapter || !currentChapter.bossName) {
-          return { bossDamage: 0, message: '当前章节没有 Boss', bossDefeated: false, cost: 0, coinsGained: 0, weakened: false, boosted: false };
-        }
-        if (state.storyProgress.defeatedBosses.includes(currentChapter.id)) {
-          return { bossDamage: 0, message: `${currentChapter.bossName} 已被击败`, bossDefeated: false, cost: 0, coinsGained: 0, weakened: false, boosted: false };
+        if (!currentChapter) {
+          return { message: '未知章节', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, oneTimeUsed: false };
         }
 
         const option = currentChapter.options?.find(o => o.id === optionId);
         if (!option) {
-          return { bossDamage: 0, message: '未知选项', bossDefeated: false, cost: 0, coinsGained: 0, weakened: false, boosted: false };
+          return { message: '未知选项', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, oneTimeUsed: false };
         }
 
-        // 检查金币是否足够
-        if (state.userProfile.coins < option.cost) {
-          return { bossDamage: 0, message: `金币不足，需要 ${option.cost} 金币`, bossDefeated: false, cost: option.cost, coinsGained: 0, weakened: false, boosted: false };
-        }
-
-        const effect = option.effect || 'damage';
+        const isOneTime = option.oneTime ?? (option.effect === 'loot');
         const chapterId = currentChapter.id;
-        // 金币搜刮类选项每章只能使用一次，避免无限刷金币
-        const isOneTime = effect === 'loot';
         if (isOneTime && (state.storyProgress.usedOptions?.[chapterId] || []).includes(option.id)) {
-          return { bossDamage: 0, message: `「${option.label}」已经使用过了`, bossDefeated: false, cost: 0, coinsGained: 0, weakened: false, boosted: false };
+          return { message: `「${option.label}」已经使用过了`, cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, oneTimeUsed: true };
         }
-        const bossMaxHP = currentChapter.bossHP;
-        const currentHP = state.storyProgress.bossCurrentHP[chapterId] ?? bossMaxHP;
-        let bossWeaken = { ...(state.storyProgress.bossWeaken || {}) };
-        let bossBoost = { ...(state.storyProgress.bossBoost || {}) };
 
-        let bossDamage = 0;
+        if (state.userProfile.coins < option.cost) {
+          return { message: `金币不足，需要 ${option.cost} 金币`, cost: option.cost, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, oneTimeUsed: false };
+        }
+
         let coinsGained = 0;
-        let weakened = false;
-        let boosted = false;
-        let newHP = currentHP;
+        let pointsGained = 0;
+        let shieldsGained = 0;
+        let doubleTurns = 0;
         let message = '';
 
-        if (effect === 'loot') {
-          // 掠夺：不造成伤害，反而获得金币
-          coinsGained = option.lootCoins || 0;
-          message = `你选择了「${option.label}」，搜刮到 ${coinsGained} 金币，${currentChapter.bossName} 毫发无损。`;
-        } else if (effect === 'weaken') {
-          // 削弱：施加易伤状态，后续出手伤害提升
-          const multiplier = option.weakenMultiplier ?? 1.5;
-          const turns = option.weakenTurns ?? 3;
-          bossWeaken[chapterId] = { multiplier, remaining: turns };
-          weakened = true;
-          message = `你选择了「${option.label}」，${currentChapter.bossName} 的防御被削弱，接下来 ${turns} 次出手伤害 ×${multiplier}！`;
-        } else if (effect === 'boost') {
-          // 强化：后续出手附加固定伤害
-          const bonus = option.boostBonus ?? 20;
-          const turns = option.boostTurns ?? 3;
-          bossBoost[chapterId] = { bonus, remaining: turns };
-          boosted = true;
-          message = `你选择了「${option.label}」，接下来 ${turns} 次出手附加 ${bonus} 点伤害！`;
-        } else {
-          // damage / drain：造成伤害，并享受削弱与强化效果
-          const pendingBonus = state.userProfile.pendingBossDamageBonus || 0;
-          const buffed = applyBossBuffs(
-            { ...state.storyProgress, bossWeaken, bossBoost },
-            chapterId,
-            option.damage + pendingBonus,
-          );
-          bossDamage = buffed.damage;
-          bossWeaken = buffed.bossWeaken;
-          bossBoost = buffed.bossBoost;
-          newHP = Math.max(0, currentHP - bossDamage);
-
-          if (effect === 'drain') {
-            coinsGained = option.drainCoins || 0;
-            message = `你选择了「${option.label}」，对 ${currentChapter.bossName} 造成 ${bossDamage} 点伤害，并掠取 ${coinsGained} 金币！`;
-          } else {
-            message = `你选择了「${option.label}」，消耗 ${option.cost} 金币，对 ${currentChapter.bossName} 造成 ${bossDamage} 点伤害！`;
-          }
-          if (pendingBonus > 0) message += `（轮盘加成 +${pendingBonus}）`;
+        switch (option.effect) {
+          case 'loot':
+            coinsGained = option.lootCoins || 0;
+            message = `你选择了「${option.label}」，获得 ${coinsGained} 金币。`;
+            break;
+          case 'wisdom':
+            pointsGained = option.wisdomPoints || 0;
+            message = `你选择了「${option.label}」，获得 ${pointsGained} 经验值。`;
+            break;
+          case 'favor':
+            shieldsGained = option.favorShields || 1;
+            message = `你选择了「${option.label}」，获得 ${shieldsGained} 张连续天数护盾。`;
+            break;
+          case 'fortune':
+            doubleTurns = option.fortuneTurns || 1;
+            message = `你选择了「${option.label}」，接下来 ${doubleTurns} 次任务金币翻倍！`;
+            break;
         }
 
-        const bossDefeated = newHP === 0 && currentHP > 0;
         const newCoins = state.userProfile.coins - option.cost + coinsGained;
+        const newPoints = state.userProfile.totalPoints + pointsGained;
+        const newLevel = getLevelByPoints(newPoints).level;
 
         set(s => {
           const newStoryProgress = { ...s.storyProgress };
-          newStoryProgress.bossCurrentHP = {
-            ...newStoryProgress.bossCurrentHP,
-            [chapterId]: newHP,
-          };
-          newStoryProgress.bossWeaken = bossWeaken;
-          newStoryProgress.bossBoost = bossBoost;
           if (isOneTime) {
             newStoryProgress.usedOptions = {
               ...(newStoryProgress.usedOptions || {}),
@@ -1326,31 +1196,7 @@ export const useStore = create<StoreState>()(
             };
           }
 
-          const newStoryLogs = [...s.storyLogs];
-          newStoryLogs.push({
-            id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
-            chapterId,
-            type: (effect === 'damage' || effect === 'drain' ? 'damage' : 'story') as LogType,
-            text: message,
-            createdAt: new Date().toISOString(),
-          });
-
-          if (bossDefeated && !newStoryProgress.defeatedBosses.includes(chapterId)) {
-            newStoryProgress.defeatedBosses = [...newStoryProgress.defeatedBosses, chapterId];
-            newStoryLogs.push({
-              id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 8)}-defeat`,
-              chapterId,
-              type: 'story' as LogType,
-              text: `你成功击败了 ${currentChapter.bossName}！${currentChapter.bossDefeatedText}`,
-              createdAt: new Date().toISOString(),
-            });
-
-            const nextChapter = CHAPTERS.find(c => c.id === chapterId + 1);
-            if (nextChapter && !newStoryProgress.unlockedChapters.includes(nextChapter.id)) {
-              newStoryProgress.unlockedChapters = [...newStoryProgress.unlockedChapters, nextChapter.id];
-              newStoryProgress.currentChapter = nextChapter.id;
-            }
-          }
+          const newStoryLogs = [...s.storyLogs, createLog(chapterId, message, 'story')];
 
           return {
             storyProgress: newStoryProgress,
@@ -1358,17 +1204,118 @@ export const useStore = create<StoreState>()(
             userProfile: {
               ...s.userProfile,
               coins: newCoins,
-              pendingBossDamageBonus: bossDamage > 0 ? 0 : s.userProfile.pendingBossDamageBonus,
+              totalPoints: newPoints,
+              level: newLevel,
+              streakShields: s.userProfile.streakShields + shieldsGained,
+              pendingCoinDoubleTurns: s.userProfile.pendingCoinDoubleTurns + doubleTurns,
             },
           };
         });
 
-        return { bossDamage, message, bossDefeated, cost: option.cost, coinsGained, weakened, boosted };
+        return { message, cost: option.cost, coinsGained, pointsGained, shieldsGained, doubleTurns, oneTimeUsed: false };
+      },
+
+      // 解锁章节支线（首次解锁即获得奖励）
+      unlockSideQuest: (sideQuestId) => {
+        const state = get();
+        const sideQuest = CHAPTERS
+          .flatMap(c => c.sideQuests || [])
+          .find(q => q.id === sideQuestId);
+        if (!sideQuest) {
+          return { message: '未知支线', rewardCoins: 0, rewardPoints: 0 };
+        }
+        if (state.storyProgress.unlockedSideQuests.includes(sideQuestId)) {
+          return { message: '该支线已解锁', rewardCoins: 0, rewardPoints: 0 };
+        }
+        const newCoins = state.userProfile.coins + sideQuest.rewardCoins;
+        const newPoints = state.userProfile.totalPoints + sideQuest.rewardPoints;
+        const newLevel = getLevelByPoints(newPoints).level;
+
+        const chapterId = sideQuest.chapterId;
+        set(s => ({
+          storyProgress: {
+            ...s.storyProgress,
+            unlockedSideQuests: [...s.storyProgress.unlockedSideQuests, sideQuestId],
+          },
+          storyLogs: [
+            ...s.storyLogs,
+            createLog(chapterId, sideQuest.storyText, 'story'),
+          ],
+          userProfile: {
+            ...s.userProfile,
+            coins: newCoins,
+            totalPoints: newPoints,
+            level: newLevel,
+          },
+        }));
+
+        return { message: `解锁「${sideQuest.title}」成功！`, rewardCoins: sideQuest.rewardCoins, rewardPoints: sideQuest.rewardPoints };
+      },
+
+      // 选择支线中的一个选项
+      completeSideQuestOption: (sideQuestId, optionId) => {
+        const state = get();
+        const sideQuest = CHAPTERS
+          .flatMap(c => c.sideQuests || [])
+          .find(q => q.id === sideQuestId);
+        if (!sideQuest) {
+          return { message: '未知支线', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
+        }
+        if (!state.storyProgress.unlockedSideQuests.includes(sideQuestId)) {
+          return { message: '请先解锁该支线', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
+        }
+        if (state.storyProgress.completedSideQuests.includes(sideQuestId)) {
+          return { message: '该支线已完成', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
+        }
+
+        const option = sideQuest.options.find(o => o.id === optionId);
+        if (!option) {
+          return { message: '未知选项', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
+        }
+
+        if (state.userProfile.coins < option.cost) {
+          return { message: `金币不足，需要 ${option.cost} 金币`, cost: option.cost, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
+        }
+
+        // 支线：一旦选择任意选项即视为完成（避免无限刷）
+        const coinsGained = option.lootCoins || 0;
+        const pointsGained = option.wisdomPoints || 0;
+        const shieldsGained = option.favorShields || 0;
+        const doubleTurns = option.fortuneTurns || 0;
+
+        const newCoins = state.userProfile.coins - option.cost + coinsGained;
+        const newPoints = state.userProfile.totalPoints + pointsGained;
+        const newLevel = getLevelByPoints(newPoints).level;
+
+        const chapterId = sideQuest.chapterId;
+        const message = `你在「${sideQuest.title}」中选择了「${option.label}」。${option.description}`;
+
+        set(s => ({
+          storyProgress: {
+            ...s.storyProgress,
+            completedSideQuests: [...s.storyProgress.completedSideQuests, sideQuestId],
+            usedSideQuestOptions: {
+              ...s.storyProgress.usedSideQuestOptions,
+              [sideQuestId]: [...(s.storyProgress.usedSideQuestOptions[sideQuestId] || []), option.id],
+            },
+          },
+          storyLogs: [...s.storyLogs, createLog(chapterId, message, 'story')],
+          userProfile: {
+            ...s.userProfile,
+            coins: newCoins,
+            totalPoints: newPoints,
+            level: newLevel,
+            streakShields: s.userProfile.streakShields + shieldsGained,
+            pendingCoinDoubleTurns: s.userProfile.pendingCoinDoubleTurns + doubleTurns,
+          },
+        }));
+
+        return { message, cost: option.cost, coinsGained, pointsGained, shieldsGained, doubleTurns, sideQuestCompleted: true };
       },
     }),
     {
       name: 'quest-planner-storage',
-      version: 13,
+      version: 14,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
@@ -1537,6 +1484,33 @@ export const useStore = create<StoreState>()(
               }
             }
             state.farm = plots.sort((a, b) => a.id - b.id);
+          }
+        }
+
+        // v13 -> v14: 移除伤害相关字段（pendingBossDamageBonus / pendingCoinDouble 布尔 / bossWeaken / bossBoost），新增支线进度与 pendingCoinDoubleTurns
+        if (version < 14) {
+          if (state.userProfile) {
+            const up = { ...state.userProfile };
+            // 把 pendingCoinDouble 布尔迁移为 pendingCoinDoubleTurns 次数
+            const oldTurns = typeof up.pendingCoinDoubleTurns === 'number' ? up.pendingCoinDoubleTurns : 0;
+            const legacyTurn = up.pendingCoinDouble ? 1 : 0;
+            up.pendingCoinDoubleTurns = Math.max(oldTurns, legacyTurn);
+            delete up.pendingCoinDouble;
+            delete up.pendingBossDamageBonus;
+            state.userProfile = up;
+          }
+          if (state.storyProgress) {
+            const sp = { ...state.storyProgress };
+            delete sp.bossWeaken;
+            delete sp.bossBoost;
+            sp.unlockedSideQuests = sp.unlockedSideQuests || [];
+            sp.completedSideQuests = sp.completedSideQuests || [];
+            sp.usedSideQuestOptions = sp.usedSideQuestOptions || {};
+            state.storyProgress = sp;
+          }
+          // 清理已安装商店中的 bossSmash
+          if (state.shopItems) {
+            state.shopItems = state.shopItems.filter((i: any) => i.effect !== 'bossSmash');
           }
         }
 

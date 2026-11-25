@@ -301,9 +301,12 @@ function WheelTaskCard({ task, onToggle, onClick, categories, allTasks, onToggle
   const firstIncompleteSubtask = incompleteSubtasks[0];
 
   const isCompleted = task.status === 'done' || (task.status === 'daily' && !!task.completedAt && isToday(task.completedAt));
+  const completedDate = isCompleted && task.completedAt
+    ? new Date(task.completedAt).toISOString().slice(0, 10)
+    : null;
 
   return (
-    <div className={`task-card ${overdue ? 'overdue' : ''}`}>
+    <div className={`task-card ${overdue ? 'overdue' : ''} ${isCompleted ? 'completed' : ''}`}>
       <button
         className="task-checkbox"
         onClick={(e) => { e.stopPropagation(); onToggle(task.id); }}
@@ -332,17 +335,22 @@ function WheelTaskCard({ task, onToggle, onClick, categories, allTasks, onToggle
           )}
         </div>
         <div className="task-card-meta">
-          {task.priority && (
+          {completedDate && (
+            <span className="tag task-completed-date">
+              ✅ 完成于 {formatDate(completedDate)}
+            </span>
+          )}
+          {!completedDate && task.priority && (
             <span className="tag" style={{ background: priorityColor(task.priority) + '22', color: priorityColor(task.priority) }}>
               {priorityLabel(task.priority)}
             </span>
           )}
-          {catName && (
+          {!completedDate && catName && (
             <span className="tag" style={{ background: catColor + '22', color: catColor }}>
               {catName}
             </span>
           )}
-          {task.dueDate && (
+          {!completedDate && task.dueDate && (
             <span className={`task-due ${overdue ? 'overdue-text' : ''}`}>
               <IconCalendar size={13} color={overdue ? 'var(--color-danger)' : 'var(--color-text-secondary)'} />
               <span style={{ marginLeft: 3 }}>{formatDate(task.dueDate)}</span>

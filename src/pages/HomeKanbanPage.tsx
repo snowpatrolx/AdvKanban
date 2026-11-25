@@ -121,6 +121,10 @@ export default function HomeKanbanPage() {
       })
       .filter(t => {
         if (statusFilter === 'all' || statusFilter === 'archived') return true;
+        if (t.status === 'daily') {
+          // 每日任务今日已完成的不再显示在列表中
+          if (t.completedAt && isToday(t.completedAt)) return false;
+        }
         return t.status === statusFilter;
       });
   }, [tasks, search, filterCategory, statusFilter]);
@@ -798,15 +802,20 @@ function KanbanCard({
           )}
         </div>
         <div className="kanban-card-meta">
-          {task.priority && (
+          {task.status === 'done' && task.completedAt && (
+            <span className="tag task-completed-date">
+              完成于 {formatDate(task.completedAt)}
+            </span>
+          )}
+          {task.status !== 'done' && task.priority && (
             <span className="tag" style={{ background: priorityColor(task.priority) + '22', color: priorityColor(task.priority) }}>
               {priorityLabel(task.priority)}
             </span>
           )}
-          {catName && (
+          {task.status !== 'done' && catName && (
             <span className="tag" style={{ background: catColor + '22', color: catColor }}>{catName}</span>
           )}
-          {task.dueDate && (
+          {task.status !== 'done' && task.dueDate && (
             <span className="kanban-card-due">
               <IconCalendar size={12} color="var(--color-text-secondary)" />
               <span style={{ marginLeft: 3 }}>{formatDate(task.dueDate)}</span>

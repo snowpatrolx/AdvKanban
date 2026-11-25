@@ -52,10 +52,9 @@ export interface UserProfile {
   currentStreak: number;
   longestStreak: number;
   lastCompletedDate: string | null;  // YYYY-MM-DD
-  coins: number;                    // 金币（用于冒险章节互动选项）
-  streakShields: number;            // 连续天数护盾数量（次日未完成不扣天数）
-  pendingCoinDouble: boolean;       // 下一次任务完成是否双倍金币
-  pendingBossDamageBonus: number;   // 下一次对 Boss 攻击额外附加的伤害
+  coins: number;
+  streakShields: number;            // 连续天数护盾数量
+  pendingCoinDoubleTurns: number;   // 剩余金币翻倍任务数（0=无，>0 则每次完成任务金币翻倍并 -1）
   wheelRewardedCount: number;       // 今日轮盘已奖励的节点数（每天重置）
   wheelRewardDate: string | null;   // 轮盘奖励最后结算的日期 YYYY-MM-DD
 }
@@ -69,23 +68,44 @@ export interface Badge {
   condition: string;  // 用于判定逻辑的 key
 }
 
-// 选项效果：damage=造成伤害, weaken=削弱 Boss（后续出手伤害提升）, boost=强化（后续出手附加伤害）, loot=获得金币, drain=掠夺（造成伤害并获得金币）
-export type ChapterEffectType = 'damage' | 'weaken' | 'boost' | 'loot' | 'drain';
+// 选项效果：loot=搜刮金币, wisdom=获得经验, favor=获得护盾, fortune=下次金币翻倍
+export type ChapterEffectType = 'loot' | 'wisdom' | 'favor' | 'fortune';
 
-// ===== 冒险章节互动选项 =====
+// ===== 冒险章节互动选项（全部为非伤害效果）=====
 export interface ChapterOption {
   id: string;
-  label: string;       // 选项名称
-  cost: number;        // 消耗金币
-  damage: number;      // 对 Boss 造成的伤害（weaken/loot 为 0）
-  description: string; // 选项描述
-  effect?: ChapterEffectType;      // 选项效果，默认 damage
-  weakenMultiplier?: number;       // weaken：后续出手伤害倍数，如 1.5
-  weakenTurns?: number;            // weaken：生效次数
-  boostBonus?: number;             // boost：后续每次出手附加的固定伤害
-  boostTurns?: number;             // boost：生效次数
-  lootCoins?: number;              // loot：获得的金币
-  drainCoins?: number;             // drain：造成伤害的同时获得的金币
+  label: string;             // 选项名称
+  cost: number;              // 消耗金币
+  description: string;       // 选项描述
+  effect: ChapterEffectType; // 选项效果
+  lootCoins?: number;        // loot：获得的金币
+  wisdomPoints?: number;     // wisdom：获得的经验值
+  favorShields?: number;     // favor：连续天数护盾数量
+  fortuneTurns?: number;     // fortune：接下来 N 次任务金币翻倍
+  oneTime?: boolean;         // 是否每章只能使用一次（默认 loot 为 true，其他为 false）
+}
+
+// ===== 故事支线 =====
+export interface SideQuestOption {
+  id: string;
+  label: string;
+  description: string;
+  cost: number;
+  lootCoins?: number;
+  wisdomPoints?: number;
+  favorShields?: number;
+  fortuneTurns?: number;
+}
+
+export interface StorySideQuest {
+  id: string;               // 唯一 id，如 'ch2-s1'
+  chapterId: number;
+  title: string;
+  emoji: string;
+  storyText: string;        // 支线剧情
+  rewardCoins: number;      // 解锁支线即可获得的金币
+  rewardPoints: number;     // 解锁支线即可获得的经验
+  options: SideQuestOption[];
 }
 
 // ===== 冒险章节 =====
@@ -99,7 +119,8 @@ export interface StoryChapter {
   bossHP: number;
   storyText: string;       // 章节剧情文本
   bossDefeatedText: string;
-  options?: ChapterOption[];  // 章节互动选项（消耗金币对 Boss 造成伤害）
+  options?: ChapterOption[];          // 章节互动选项（非伤害效果）
+  sideQuests?: StorySideQuest[];      // 章节支线
 }
 
 export interface StoryProgress {
@@ -107,9 +128,11 @@ export interface StoryProgress {
   unlockedChapters: number[];  // 已解锁章节
   bossCurrentHP: Record<number, number>;  // 各章节 Boss 当前 HP
   defeatedBosses: number[];    // 已击败的 Boss 章节 id
-  bossWeaken?: Record<number, { multiplier: number; remaining: number }>;  // Boss 被削弱的剩余出手次数
-  bossBoost?: Record<number, { bonus: number; remaining: number }>;        // Boss 受强化伤害的剩余出手次数
-  usedOptions?: Record<number, string[]>;  // 已使用的一次性选项（如搜刮金币），按章节记录
+  usedOptions?: Record<number, string[]>;  // 已使用的一次性选项，按章节记录
+  // 支线进度
+  unlockedSideQuests: string[];           // 已解锁的支线 id
+  completedSideQuests: string[];          // 已完成（全部选项都用过后）的支线
+  usedSideQuestOptions: Record<string, string[]>;  // 每条支线已使用的选项
 }
 
 export interface StoryLog {
@@ -137,7 +160,7 @@ export interface DailyRecord {
 }
 
 // ===== 金币商店 =====
-export type ShopEffect = 'streakShield' | 'coinDouble' | 'bossSmash' | 'quickComplete';
+export type ShopEffect = 'streakShield' | 'coinDouble' | 'quickComplete';
 
 export interface ShopItem {
   id: string;

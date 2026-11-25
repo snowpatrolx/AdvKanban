@@ -189,15 +189,18 @@ function KanbanCard({
             {task.status === 'done' && '✅ '}{task.title}
           </div>
           <div className="kanban-card-meta">
-            {task.priority && (
+            {task.status === 'done' && task.completedAt && (
+              <span className="tag task-completed-date">完成于 {formatDate(task.completedAt)}</span>
+            )}
+            {task.status !== 'done' && task.priority && (
               <span className="tag" style={{ background: priorityColor(task.priority) + '22', color: priorityColor(task.priority) }}>
                 {priorityLabel(task.priority)}
               </span>
             )}
-            {catName && (
+            {task.status !== 'done' && catName && (
               <span className="tag" style={{ background: catColor + '22', color: catColor }}>{catName}</span>
             )}
-            {task.dueDate && <span className="kanban-card-due">📅 {formatDate(task.dueDate)}</span>}
+            {task.status !== 'done' && task.dueDate && <span className="kanban-card-due">📅 {formatDate(task.dueDate)}</span>}
           </div>
         </div>
       </div>
@@ -219,15 +222,18 @@ function KanbanCard({
           {task.status === 'done' && '✅ '}{task.title}
         </div>
         <div className="kanban-card-meta">
-          {task.priority && (
+          {task.status === 'done' && task.completedAt && (
+            <span className="tag task-completed-date">完成于 {formatDate(task.completedAt)}</span>
+          )}
+          {task.status !== 'done' && task.priority && (
             <span className="tag" style={{ background: priorityColor(task.priority) + '22', color: priorityColor(task.priority) }}>
               {priorityLabel(task.priority)}
             </span>
           )}
-          {catName && (
+          {task.status !== 'done' && catName && (
             <span className="tag" style={{ background: catColor + '22', color: catColor }}>{catName}</span>
           )}
-          {task.dueDate && <span className="kanban-card-due">📅 {formatDate(task.dueDate)}</span>}
+          {task.status !== 'done' && task.dueDate && <span className="kanban-card-due">📅 {formatDate(task.dueDate)}</span>}
         </div>
       </div>
     </div>
