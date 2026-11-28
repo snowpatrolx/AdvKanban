@@ -7,6 +7,7 @@ import {
   IconBack, IconTrash, IconPlus, IconCheckCircle, IconRepeat, IconSubtask, IconCheck, IconEdit, IconCalendar,
 } from '../components/common/Icons';
 import { formatDate } from '../utils/taskHelpers';
+import { Calendar } from '../components/common/Calendar';
 import type { TaskPriority, TaskStatus, RepeatType } from '../types';
 import './TaskDetailPage.css';
 
@@ -20,6 +21,15 @@ export default function TaskDetailPage() {
 
   const isNew = id === 'new' || !id;
   const existing = !isNew ? tasks.find(t => t.id === id) : null;
+
+  // 每日 / 重复任务的完成日期集合（用于日历统计）
+  const completionDates = (() => {
+    if (!existing) return [] as string[];
+    const set = new Set<string>(existing.completedDates || []);
+    if (existing.completedAt) set.add(existing.completedAt.substring(0, 10));
+    return Array.from(set).sort();
+  })();
+  const totalCompletions = completionDates.length || (existing?.repeatCount || 0);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -294,6 +304,23 @@ export default function TaskDetailPage() {
             <div className="repeat-count-info">
               <span className="repeat-count-badge">累计 {existing.repeatCount || 0} 次</span>
               <span className="repeat-count-desc">本任务已重复 {existing.repeatCount || 0} 次</span>
+            </div>
+          )}
+
+          {/* 每日 / 重复任务完成统计 + 日历（高亮该任务被完成过的日期） */}
+          {!isNew && (repeat !== 'none' || status === 'daily') && existing && (
+            <div className="repeat-stats">
+              <div className="repeat-stats-header">
+                <span className="repeat-stats-title">完成日历</span>
+                <span className="repeat-stats-count">共完成 {totalCompletions} 天</span>
+              </div>
+              <Calendar
+                highlightedDates={completionDates}
+                initialDate={completionDates[completionDates.length - 1]}
+              />
+              {completionDates.length === 0 && (
+                <p className="repeat-stats-empty">还没有完成记录，完成一次任务后这里会点亮日历。</p>
+              )}
             </div>
           )}
         </div>

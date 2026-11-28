@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { getLevelByPoints, getLevelProgress } from '../utils/gamification';
 import { getTodayStr, daysBetween } from '../utils/id';
+import { sortDoneByCompletedAtDesc, buildCompletionDateMap } from '../utils/taskHelpers';
+import { Calendar } from '../components/common/Calendar';
 import { IconChart, IconFlame, IconStar, IconCheck, IconCoins } from '../components/common/Icons';
 import './DailyStatsPage.css';
 
@@ -54,16 +56,29 @@ export default function DailyStatsPage() {
   // 最大值用于柱状图缩放
   const maxCount = Math.max(...last7Days.map(d => d.count), 1);
 
-  // 今日完成的任务列表
+  // 今日完成的任务列表（按完成日期+时间倒序）
   const completedToday = useMemo(() => {
-    return tasks
+    const list = tasks
       .filter(t => !t.parentId && t.status === 'done' && t.completedAt)
       .filter(t => {
         const completedDate = t.completedAt!.substring(0, 10);
         return completedDate === todayStr;
-      })
-      .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+      });
+    return sortDoneByCompletedAtDesc(list);
   }, [tasks, todayStr]);
+
+  // 完成日历：所有任务在哪些日期被完成过（done 任务的 completedAt + 每日/重复任务的 completedDates）
+  const completionMap = useMemo(() => buildCompletionDateMap(tasks), [tasks]);
+  const completionCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const [date, list] of Object.entries(completionMap)) c[date] = list.length;
+    return c;
+  }, [completionMap]);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const selectedDateTasks = useMemo(() => {
+    const list = completionMap[selectedDate] || [];
+    return sortDoneByCompletedAtDesc(list);
+  }, [completionMap, selectedDate]);
 
   // 等级信息
   const levelInfo = getLevelProgress(userProfile.totalPoints);
@@ -136,6 +151,51 @@ export default function DailyStatsPage() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* 完成日历：点击任一日期查看当天完成了哪些任务 */}
+      <div className="card stats-calendar-card">
+        <div className="stats-card-header">
+          <h3>完成日历</h3>
+          <span className="stats-card-subtitle">点击日期查看当天完成的任务</span>
+        </div>
+        <Calendar
+          highlightedDates={Object.keys(completionMap)}
+          counts={completionCounts}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+        />
+        <div className="stats-calendar-detail">
+          <div className="stats-calendar-detail-title">
+            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
+            <span className="stats-calendar-detail-count">完成 {selectedDateTasks.length} 个任务</span>
+          </div>
+          {selectedDateTasks.length > 0 ? (
+            <div className="stats-task-list">
+              {selectedDateTasks.map(task => {
+                const showTime = !!task.completedAt && task.completedAt.substring(0, 10) === selectedDate;
+                return (
+                  <div key={task.id} className="stats-task-item">
+                    <span className="stats-task-dot" style={{
+                      background: task.priority === 'high' ? '#e84393' : task.priority === 'medium' ? '#fdcb6e' : '#00b894'
+                    }} />
+                    <span className="stats-task-title">{task.title}</span>
+                    {task.repeat !== 'none' && (
+                      <span className="stats-task-repeat">第{task.repeatCount}次</span>
+                    )}
+                    <span className="stats-task-time">
+                      {showTime ? new Date(task.completedAt!).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="stats-empty">
+              <p>这一天没有完成任务记录</p>
+            </div>
+          )}
         </div>
       </div>
 

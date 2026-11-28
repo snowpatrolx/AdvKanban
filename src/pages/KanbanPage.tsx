@@ -8,7 +8,7 @@ import {
 import { useStore } from '../store/useStore';
 import { useToastStore } from '../components/common/Toast';
 import type { Task, TaskStatus, Category } from '../types';
-import { priorityColor, priorityLabel, getCategoryName, getCategoryColor, formatDate } from '../utils/taskHelpers';
+import { priorityColor, priorityLabel, getCategoryName, getCategoryColor, formatDate, sortDoneByCompletedAtDesc } from '../utils/taskHelpers';
 import './KanbanPage.css';
 
 const COLUMNS: { id: TaskStatus; title: string; color: string }[] = [
@@ -33,12 +33,8 @@ export default function KanbanPage() {
     const map: Record<TaskStatus, Task[]> = { todo: [], doing: [], daily: [], shopping: [], done: [] };
     tasks.forEach(t => map[t.status].push(t));
     Object.values(map).forEach(arr => arr.sort((a, b) => a.order - b.order));
-    // 已完成任务按完成时间倒序：当日完成的排在最上面
-    map.done.sort((a, b) => {
-      const ta = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-      const tb = b.completedAt ? new Date(b.completedAt).getTime() : 0;
-      return tb - ta;
-    });
+    // 已完成任务按「完成日期 + 时间」倒序：最新完成的排在最上面
+    map.done = sortDoneByCompletedAtDesc(map.done);
     return map;
   }, [tasks]);
 

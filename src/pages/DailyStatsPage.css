@@ -418,6 +418,36 @@
   margin: 0;
 }
 
+/* 完成日历卡片 */
+.stats-calendar-card {
+  margin-top: 12px;
+}
+
+.stats-calendar-detail {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--color-border);
+}
+
+.stats-calendar-detail-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 10px;
+}
+
+.stats-calendar-detail-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(108, 92, 231, 0.1);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
 /* 响应式 */
 @media (max-width: 380px) {
   .stats-mini-grid {

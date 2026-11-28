@@ -22,6 +22,7 @@ export interface Task {
   repeatCount: number;          // 重复次数计数，第N次重复
   parentId: string | null;      // 父任务ID（子任务用）
   archived?: boolean;           // 是否已归档
+  completedDates?: string[];    // 该任务被完成过的所有日期（YYYY-MM-DD，去重），用于每日/重复任务的日历统计
 }
 
 // ===== 分类 =====
@@ -68,21 +69,18 @@ export interface Badge {
   condition: string;  // 用于判定逻辑的 key
 }
 
-// 选项效果：loot=搜刮金币, wisdom=获得经验, favor=获得护盾, fortune=下次金币翻倍
-export type ChapterEffectType = 'loot' | 'wisdom' | 'favor' | 'fortune';
+// 选项效果：wisdom=获得经验, favor=获得护盾（已完全移除金币相关选项）
+export type ChapterEffectType = 'wisdom' | 'favor';
 
-// ===== 冒险章节互动选项（全部为非伤害效果）=====
+// ===== 冒险章节互动选项（全部免费、非伤害、非金币效果）=====
 export interface ChapterOption {
   id: string;
   label: string;             // 选项名称
-  cost: number;              // 消耗金币
   description: string;       // 选项描述
   effect: ChapterEffectType; // 选项效果
-  lootCoins?: number;        // loot：获得的金币
   wisdomPoints?: number;     // wisdom：获得的经验值
   favorShields?: number;     // favor：连续天数护盾数量
-  fortuneTurns?: number;     // fortune：接下来 N 次任务金币翻倍
-  oneTime?: boolean;         // 是否每章只能使用一次（默认 loot 为 true，其他为 false）
+  oneTime?: boolean;         // 是否每章只能使用一次
 }
 
 // ===== 故事支线 =====
@@ -90,11 +88,16 @@ export interface SideQuestOption {
   id: string;
   label: string;
   description: string;
-  cost: number;
-  lootCoins?: number;
   wisdomPoints?: number;
   favorShields?: number;
-  fortuneTurns?: number;
+}
+
+// 支线阶段：每个阶段需要完成若干任务解锁选项，选择后进入下一阶段（支线长度由此体现）
+export interface SideQuestStage {
+  id: string;
+  text: string;                  // 本阶段剧情
+  options: SideQuestOption[];    // 本阶段可选选项
+  tasksRequired: number;         // 需完成的任务数来解锁本阶段选项（与任务进度关联）
 }
 
 export interface StorySideQuest {
@@ -102,10 +105,8 @@ export interface StorySideQuest {
   chapterId: number;
   title: string;
   emoji: string;
-  storyText: string;        // 支线剧情
-  rewardCoins: number;      // 解锁支线即可获得的金币
-  rewardPoints: number;     // 解锁支线即可获得的经验
-  options: SideQuestOption[];
+  intro: string;            // 支线开场剧情
+  stages: SideQuestStage[]; // 多阶段剧情，长度可变
 }
 
 // ===== 冒险章节 =====
@@ -128,11 +129,13 @@ export interface StoryProgress {
   unlockedChapters: number[];  // 已解锁章节
   bossCurrentHP: Record<number, number>;  // 各章节 Boss 当前 HP
   defeatedBosses: number[];    // 已击败的 Boss 章节 id
-  usedOptions?: Record<number, string[]>;  // 已使用的一次性选项，按章节记录
+  usedOptions?: Record<number, string[]>;  // 已使用的一次性章节选项，按章节记录
   // 支线进度
   unlockedSideQuests: string[];           // 已解锁的支线 id
-  completedSideQuests: string[];          // 已完成（全部选项都用过后）的支线
-  usedSideQuestOptions: Record<string, string[]>;  // 每条支线已使用的选项
+  completedSideQuests: string[];          // 已完成的支线
+  usedSideQuestOptions: Record<string, string[]>;  // 每条支线已使用的选项（按阶段选项 id）
+  sideQuestStage: Record<string, number>;           // 每条支线当前阶段 index
+  sideQuestTaskProgress: Record<string, number>;    // 每条支线当前阶段已积累的任务完成数
 }
 
 export interface StoryLog {

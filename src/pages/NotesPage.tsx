@@ -5,9 +5,8 @@ import { useToastStore } from '../components/common/Toast';
 import {
   IconBack, IconPlus, IconTrash, IconCheck,
 } from '../components/common/Icons';
+import { NOTE_COLORS, noteTextColor } from '../utils/noteColors';
 import './NotesPage.css';
-
-const NOTE_COLORS = ['#ffe066', '#ffc9de', '#a5d8ff', '#b2f2bb', '#d0bfff', '#ffd8a8'];
 
 function formatNoteTime(iso: string): string {
   const d = new Date(iso);
@@ -28,6 +27,7 @@ export default function NotesPage() {
   const [color, setColor] = useState(NOTE_COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
+  const [editingColor, setEditingColor] = useState<string>(NOTE_COLORS[0]);
 
   const handleAdd = () => {
     if (!content.trim()) return;
@@ -36,9 +36,10 @@ export default function NotesPage() {
     addToast({ icon: '📝', title: '便签已添加' });
   };
 
-  const handleStartEdit = (id: string, c: string) => {
+  const handleStartEdit = (id: string, c: string, currentColor: string) => {
     setEditingId(id);
     setEditingContent(c);
+    setEditingColor(currentColor || NOTE_COLORS[0]);
   };
 
   const handleSaveEdit = () => {
@@ -46,7 +47,7 @@ export default function NotesPage() {
       setEditingId(null);
       return;
     }
-    updateNote(editingId, { content: editingContent.trim() });
+    updateNote(editingId, { content: editingContent.trim(), color: editingColor });
     setEditingId(null);
     setEditingContent('');
     addToast({ icon: '✓', title: '便签已更新' });
@@ -125,14 +126,18 @@ export default function NotesPage() {
         </div>
       ) : (
         <div className="notes-grid">
-          {sortedNotes.map(note => (
+          {sortedNotes.map(note => {
+            const isEditing = editingId === note.id;
+            const bg = isEditing ? editingColor : note.color;
+            const textColor = noteTextColor(bg);
+            return (
             <article
               key={note.id}
-              className={`sticky-note ${editingId === note.id ? 'editing' : ''}`}
-              style={{ background: note.color }}
+              className={`sticky-note ${isEditing ? 'editing' : ''}`}
+              style={{ background: bg, color: textColor }}
             >
               <span className="sticky-note-tape" />
-              {editingId === note.id ? (
+              {isEditing ? (
                 <>
                   <textarea
                     className="notes-edit-textarea"
@@ -141,8 +146,20 @@ export default function NotesPage() {
                     autoFocus
                     rows={Math.max(3, Math.ceil(editingContent.length / 18))}
                   />
+                  <div className="notes-edit-palette">
+                    {NOTE_COLORS.map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        className={`notes-color-dot ${editingColor === c ? 'active' : ''}`}
+                        style={{ background: c }}
+                        onClick={() => setEditingColor(c)}
+                        aria-label="选择便签颜色"
+                      />
+                    ))}
+                  </div>
                   <div className="sticky-note-footer">
-                    <span className="sticky-note-time">{formatNoteTime(note.updatedAt || note.createdAt)}</span>
+                    <span className="sticky-note-time" style={{ color: textColor, opacity: 0.8 }}>{formatNoteTime(note.updatedAt || note.createdAt)}</span>
                     <div className="sticky-note-actions">
                       <button className="sticky-note-btn save" onClick={handleSaveEdit}>
                         <IconCheck size={15} color="#fff" /> 保存
@@ -154,25 +171,27 @@ export default function NotesPage() {
                 <>
                   <div
                     className="sticky-note-content"
-                    onClick={() => handleStartEdit(note.id, note.content)}
+                    style={{ color: textColor }}
+                    onClick={() => handleStartEdit(note.id, note.content, note.color)}
                   >
                     {note.content}
                   </div>
                   <div className="sticky-note-footer">
-                    <span className="sticky-note-time">{formatNoteTime(note.createdAt)}</span>
+                    <span className="sticky-note-time" style={{ color: textColor, opacity: 0.8 }}>{formatNoteTime(note.createdAt)}</span>
                     <div className="sticky-note-actions">
                       <button className="sticky-note-btn convert" onClick={() => handleConvert(note.id)}>
                         转为任务
                       </button>
                       <button className="sticky-note-btn delete" onClick={() => deleteNote(note.id)} aria-label="删除便签">
-                        <IconTrash size={14} color="#7a5c1e" />
+                        <IconTrash size={14} color={textColor} />
                       </button>
                     </div>
                   </div>
                 </>
               )}
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

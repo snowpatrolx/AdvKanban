@@ -66,7 +66,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #ffd93d, #ff8fab, #74c0fc, #8ce99a, #b197fc);
+  background: linear-gradient(90deg, #1e3a5f, #2d6a4f, #6a1b1b, #5a3e1b, #3d2b5c, #2b2b2b);
 }
 
 .notes-composer-input {
@@ -312,6 +312,14 @@
 
 .notes-edit-textarea:focus {
   outline: 1px solid rgba(108, 92, 231, 0.5);
+}
+
+/* 编辑态下的便签颜色选择器 */
+.notes-edit-palette {
+  display: flex;
+  gap: 7px;
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 /* 空状态 */

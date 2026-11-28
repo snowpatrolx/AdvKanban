@@ -16,7 +16,7 @@ import {
   IconFlame, IconRepeat, IconChevronDown, IconChevronRight, IconSubtask, IconDrag,
   IconFolder, IconRefresh, IconNote,
 } from '../components/common/Icons';
-import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor, isTaskToday, getDaysUntilDue, formatDaysUntil } from '../utils/taskHelpers';
+import { isToday, isOverdue, formatDate, priorityColor, priorityLabel, getCategoryName, getCategoryColor, isTaskToday, getDaysUntilDue, formatDaysUntil, sortDoneByCompletedAtDesc } from '../utils/taskHelpers';
 import type { Task, TaskStatus, Category, TaskPriority } from '../types';
 import './HomeKanbanPage.css';
 
@@ -132,14 +132,16 @@ export default function HomeKanbanPage() {
   // 已归档任务总数（不受搜索/分类筛选影响，用于按钮计数）
   const archivedCount = useMemo(() => tasks.filter(t => !t.parentId && t.archived).length, [tasks]);
 
-  // 已归档任务列表（用于归档视图，按完成时间倒序）
+  // 已归档任务列表（用于归档视图，按完成日期+时间倒序）
   const archivedTasks = useMemo(() => {
-    return [...filteredTasks].sort((a, b) =>
-      (b.completedAt || b.createdAt).localeCompare(a.completedAt || a.createdAt)
-    );
+    return sortDoneByCompletedAtDesc(filteredTasks);
   }, [filteredTasks]);
 
   const sortedListTasks = useMemo(() => {
+    // 已完成筛选：按完成日期+时间倒序，最新完成的在最上面
+    if (statusFilter === 'done') {
+      return sortDoneByCompletedAtDesc(filteredTasks);
+    }
     return [...filteredTasks]
       .sort((a, b) => {
         // 1. 优先级高的排前
@@ -157,7 +159,7 @@ export default function HomeKanbanPage() {
         // 4. 按排序
         return a.order - b.order;
       });
-  }, [filteredTasks]);
+  }, [filteredTasks, statusFilter]);
 
   // 在状态筛选为 all 时分今日/其他，否则显示全部筛选结果
   const todayTasks = statusFilter === 'all' ? sortedListTasks.filter(t => isTaskToday(t)) : [];

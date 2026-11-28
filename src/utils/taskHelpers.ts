@@ -232,3 +232,49 @@ export function formatDaysUntil(days: number | null): string {
   if (days <= 7) return `还差${days}天`;
   return `还差${days}天`;
 }
+
+/**
+ * 已完成任务按「完成日期 + 时间」倒序排列（最新完成的在最上面）。
+ * ISO 字符串字典序即时间序；缺少 completedAt 的任务沉到末尾。
+ */
+export function sortDoneByCompletedAtDesc<T extends { completedAt: string | null }>(tasks: T[]): T[] {
+  return [...tasks].sort((a, b) => {
+    const ta = a.completedAt || '';
+    const tb = b.completedAt || '';
+    if (!ta && !tb) return 0;
+    if (!ta) return 1;
+    if (!tb) return -1;
+    return tb.localeCompare(ta);
+  });
+}
+
+/**
+ * 汇总所有任务在哪些日期被完成过 -> { 'YYYY-MM-DD': Task[] }
+ * 数据源：done 任务的 completedAt；每日/重复任务累积的 completedDates。
+ * 同一任务同一天只计入一次。
+ */
+export function buildCompletionDateMap(tasks: Task[]): Record<string, Task[]> {
+  const map: Record<string, Task[]> = {};
+  const add = (date: string, task: Task) => {
+    if (!date) return;
+    if (!map[date]) map[date] = [];
+    if (!map[date].some(t => t.id === task.id)) map[date].push(task);
+  };
+  for (const t of tasks) {
+    if (t.parentId) continue;
+    if (t.status === 'done' && t.completedAt) {
+      add(toLocalDateStr(t.completedAt), t);
+    }
+    if (t.completedDates && t.completedDates.length > 0) {
+      for (const d of t.completedDates) add(d, t);
+    }
+  }
+  return map;
+}
+
+/** 去重追加一个日期到字符串数组（用于 completedDates） */
+export function appendUniqueDate(list: string[] | undefined, date: string): string[] {
+  const next = list ? [...list] : [];
+  if (date && !next.includes(date)) next.push(date);
+  return next;
+}

@@ -10,7 +10,8 @@ import {
   checkChapterCondition, calculateBossDamage, updateDailyRecord,
 } from '../utils/gamification';
 import { getDailyWheelRewards } from '../utils/wheelRewards';
-import { advanceOccurrence, nextOccurrenceOnOrAfter, isToday, toLocalDateStr } from '../utils/taskHelpers';
+import { advanceOccurrence, nextOccurrenceOnOrAfter, isToday, toLocalDateStr, appendUniqueDate } from '../utils/taskHelpers';
+import { isKnownNoteColor, DEFAULT_NOTE_COLOR } from '../utils/noteColors';
 import { CHAPTERS } from '../data/chapters';
 
 interface StoreState {
@@ -87,17 +88,17 @@ interface StoreState {
   harvestCrop: (plotId: number) => number;
   upgradeBuilding: (key: keyof FarmBuildings) => boolean;
 
-  // 互动
-  adventureOption: (optionId: string) => { message: string; cost: number; coinsGained: number; pointsGained: number; shieldsGained: number; doubleTurns: number; oneTimeUsed: boolean };
-  unlockSideQuest: (sideQuestId: string) => { message: string; rewardCoins: number; rewardPoints: number };
-  completeSideQuestOption: (sideQuestId: string, optionId: string) => { message: string; cost: number; coinsGained: number; pointsGained: number; shieldsGained: number; doubleTurns: number; sideQuestCompleted: boolean };
+  // 互动（冒险章节已完全移除金币相关选项，仅保留经验 / 护盾）
+  adventureOption: (optionId: string) => { message: string; pointsGained: number; shieldsGained: number; oneTimeUsed: boolean };
+  unlockSideQuest: (sideQuestId: string) => { message: string };
+  completeSideQuestOption: (sideQuestId: string, optionId: string) => { message: string; pointsGained: number; shieldsGained: number; sideQuestCompleted: boolean; locked: boolean };
 
   // 内部
   _processTaskCompletion: (task: Task) => { pointsEarned: number; coinsEarned: number; newBadges: string[]; bossDefeated: boolean; storyUnlocked: number | null; wheelCoinsBonus: number; wheelMilestone: number | null; shoppingCost?: number };
   _processSubtaskCompletion: (subtask: Task) => { bossDamage: number; coinsEarned: number; bossDefeated: boolean; storyUnlocked: number | null };
 }
 
-export const APP_VERSION = '1.23';
+export const APP_VERSION = '1.24';
 
 // 家园农田作物配置
 export const FARM_CROPS: Record<string, { name: string; emoji: string; cost: number; required: number; reward: number }> = {
@@ -214,15 +215,19 @@ const defaultUserProfile: UserProfile = {
   wheelRewardDate: null,
 };
 
+// 新用户默认解锁第 1 章的支线（第 1 章没有 Boss，需在初始状态即可见）
+const ch1SideQuests = CHAPTERS.find(c => c.id === 1)?.sideQuests || [];
 const defaultStoryProgress: StoryProgress = {
   currentChapter: 1,
   unlockedChapters: [1],
   bossCurrentHP: {},
   defeatedBosses: [],
   usedOptions: {},
-  unlockedSideQuests: [],
+  unlockedSideQuests: ch1SideQuests.map(q => q.id),
   completedSideQuests: [],
   usedSideQuestOptions: {},
+  sideQuestStage: Object.fromEntries(ch1SideQuests.map(q => [q.id, 0])),
+  sideQuestTaskProgress: Object.fromEntries(ch1SideQuests.map(q => [q.id, 0])),
 };
 
 // 创建故事日志的辅助函数
@@ -360,6 +365,8 @@ export const useStore = create<StoreState>()(
                 ...t,
                 status: newStatus,
                 completedAt,
+                // 记录本次完成日期（去重），用于每日/重复任务的日历统计
+                completedDates: appendUniqueDate(t.completedDates, todayStr),
                 // 每日任务每次完成累计重复计数
                 repeatCount: task.status === 'daily' ? (t.repeatCount || 0) + 1 : t.repeatCount,
               }
@@ -378,6 +385,8 @@ export const useStore = create<StoreState>()(
             dueDate: nextDue,
             createdAt: new Date().toISOString(),
             repeatCount: nextCount,
+            // 继承历史完成日期，使该重复任务的日历能看到全部完成记录
+            completedDates: task.completedDates,
           };
           updatedTasks = [...updatedTasks, newTask];
         }
@@ -561,6 +570,29 @@ export const useStore = create<StoreState>()(
               }
             }
           }
+        }
+
+        // ===== 故事支线：与任务进度关联 =====
+        // 1) 新章节解锁时，自动解锁该章节的所有支线（无需手动解锁）
+        if (storyUnlocked && storyUnlocked > 0) {
+          const unlockedChapter = CHAPTERS.find(c => c.id === storyUnlocked);
+          for (const sq of unlockedChapter?.sideQuests || []) {
+            if (!newStoryProgress.unlockedSideQuests.includes(sq.id)) {
+              newStoryProgress.unlockedSideQuests = [...newStoryProgress.unlockedSideQuests, sq.id];
+              newStoryProgress.sideQuestStage = { ...newStoryProgress.sideQuestStage, [sq.id]: 0 };
+              newStoryProgress.sideQuestTaskProgress = { ...newStoryProgress.sideQuestTaskProgress, [sq.id]: 0 };
+              newStoryLogs.push(createLog(sq.chapterId, sq.intro, 'story'));
+            }
+          }
+        }
+        // 2) 每完成一个任务，所有进行中的支线进度 +1，达到阶段要求后即可选择该阶段选项
+        const activeSideQuests = CHAPTERS.flatMap(c => c.sideQuests || []).filter(
+          q => newStoryProgress.unlockedSideQuests.includes(q.id)
+            && !newStoryProgress.completedSideQuests.includes(q.id),
+        );
+        for (const sq of activeSideQuests) {
+          const cur = newStoryProgress.sideQuestTaskProgress[sq.id] || 0;
+          newStoryProgress.sideQuestTaskProgress = { ...newStoryProgress.sideQuestTaskProgress, [sq.id]: cur + 1 };
         }
 
         // 徽章功能已取消，不再发放
@@ -1135,40 +1167,26 @@ export const useStore = create<StoreState>()(
         return true;
       },
 
-      // 冒险章节互动（已取消伤害相关选项，全部为 loot / wisdom / favor / fortune）
+      // 冒险章节互动（已完全移除金币相关选项，仅保留 wisdom 经验 / favor 护盾）
       adventureOption: (optionId) => {
         const state = get();
         const currentChapter = CHAPTERS.find(c => c.id === state.storyProgress.currentChapter);
-        if (!currentChapter) {
-          return { message: '未知章节', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, oneTimeUsed: false };
-        }
+        const empty = { message: '', pointsGained: 0, shieldsGained: 0, oneTimeUsed: false };
+        if (!currentChapter) return { ...empty, message: '未知章节' };
 
         const option = currentChapter.options?.find(o => o.id === optionId);
-        if (!option) {
-          return { message: '未知选项', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, oneTimeUsed: false };
-        }
+        if (!option) return { ...empty, message: '未知选项' };
 
-        const isOneTime = option.oneTime ?? (option.effect === 'loot');
+        const isOneTime = !!option.oneTime;
         const chapterId = currentChapter.id;
         if (isOneTime && (state.storyProgress.usedOptions?.[chapterId] || []).includes(option.id)) {
-          return { message: `「${option.label}」已经使用过了`, cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, oneTimeUsed: true };
+          return { ...empty, message: `「${option.label}」已经使用过了`, oneTimeUsed: true };
         }
 
-        if (state.userProfile.coins < option.cost) {
-          return { message: `金币不足，需要 ${option.cost} 金币`, cost: option.cost, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, oneTimeUsed: false };
-        }
-
-        let coinsGained = 0;
         let pointsGained = 0;
         let shieldsGained = 0;
-        let doubleTurns = 0;
         let message = '';
-
         switch (option.effect) {
-          case 'loot':
-            coinsGained = option.lootCoins || 0;
-            message = `你选择了「${option.label}」，获得 ${coinsGained} 金币。`;
-            break;
           case 'wisdom':
             pointsGained = option.wisdomPoints || 0;
             message = `你选择了「${option.label}」，获得 ${pointsGained} 经验值。`;
@@ -1177,13 +1195,10 @@ export const useStore = create<StoreState>()(
             shieldsGained = option.favorShields || 1;
             message = `你选择了「${option.label}」，获得 ${shieldsGained} 张连续天数护盾。`;
             break;
-          case 'fortune':
-            doubleTurns = option.fortuneTurns || 1;
-            message = `你选择了「${option.label}」，接下来 ${doubleTurns} 次任务金币翻倍！`;
-            break;
+          default:
+            message = `你选择了「${option.label}」。`;
         }
 
-        const newCoins = state.userProfile.coins - option.cost + coinsGained;
         const newPoints = state.userProfile.totalPoints + pointsGained;
         const newLevel = getLevelByPoints(newPoints).level;
 
@@ -1195,127 +1210,124 @@ export const useStore = create<StoreState>()(
               [chapterId]: [...(newStoryProgress.usedOptions?.[chapterId] || []), option.id],
             };
           }
-
-          const newStoryLogs = [...s.storyLogs, createLog(chapterId, message, 'story')];
-
           return {
             storyProgress: newStoryProgress,
-            storyLogs: newStoryLogs,
+            storyLogs: [...s.storyLogs, createLog(chapterId, message, 'story')],
             userProfile: {
               ...s.userProfile,
-              coins: newCoins,
               totalPoints: newPoints,
               level: newLevel,
               streakShields: s.userProfile.streakShields + shieldsGained,
-              pendingCoinDoubleTurns: s.userProfile.pendingCoinDoubleTurns + doubleTurns,
             },
           };
         });
 
-        return { message, cost: option.cost, coinsGained, pointsGained, shieldsGained, doubleTurns, oneTimeUsed: false };
+        return { message, pointsGained, shieldsGained, oneTimeUsed: false };
       },
 
-      // 解锁章节支线（首次解锁即获得奖励）
+      // 解锁章节支线（章节解锁时已自动解锁，此方法保留用于手动补解锁，无金币奖励）
       unlockSideQuest: (sideQuestId) => {
         const state = get();
-        const sideQuest = CHAPTERS
-          .flatMap(c => c.sideQuests || [])
-          .find(q => q.id === sideQuestId);
-        if (!sideQuest) {
-          return { message: '未知支线', rewardCoins: 0, rewardPoints: 0 };
-        }
+        const sideQuest = CHAPTERS.flatMap(c => c.sideQuests || []).find(q => q.id === sideQuestId);
+        if (!sideQuest) return { message: '未知支线' };
         if (state.storyProgress.unlockedSideQuests.includes(sideQuestId)) {
-          return { message: '该支线已解锁', rewardCoins: 0, rewardPoints: 0 };
+          return { message: '该支线已解锁' };
         }
-        const newCoins = state.userProfile.coins + sideQuest.rewardCoins;
-        const newPoints = state.userProfile.totalPoints + sideQuest.rewardPoints;
-        const newLevel = getLevelByPoints(newPoints).level;
-
         const chapterId = sideQuest.chapterId;
         set(s => ({
           storyProgress: {
             ...s.storyProgress,
             unlockedSideQuests: [...s.storyProgress.unlockedSideQuests, sideQuestId],
+            sideQuestStage: { ...s.storyProgress.sideQuestStage, [sideQuestId]: 0 },
+            sideQuestTaskProgress: { ...s.storyProgress.sideQuestTaskProgress, [sideQuestId]: 0 },
           },
-          storyLogs: [
-            ...s.storyLogs,
-            createLog(chapterId, sideQuest.storyText, 'story'),
-          ],
-          userProfile: {
-            ...s.userProfile,
-            coins: newCoins,
-            totalPoints: newPoints,
-            level: newLevel,
-          },
+          storyLogs: [...s.storyLogs, createLog(chapterId, sideQuest.intro, 'story')],
         }));
-
-        return { message: `解锁「${sideQuest.title}」成功！`, rewardCoins: sideQuest.rewardCoins, rewardPoints: sideQuest.rewardPoints };
+        return { message: `解锁「${sideQuest.title}」成功！` };
       },
 
-      // 选择支线中的一个选项
+      // 选择支线当前阶段的一个选项（多阶段：选中后进入下一阶段，全部阶段走完即完成）
       completeSideQuestOption: (sideQuestId, optionId) => {
         const state = get();
-        const sideQuest = CHAPTERS
-          .flatMap(c => c.sideQuests || [])
-          .find(q => q.id === sideQuestId);
-        if (!sideQuest) {
-          return { message: '未知支线', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
-        }
+        const sideQuest = CHAPTERS.flatMap(c => c.sideQuests || []).find(q => q.id === sideQuestId);
+        const empty = { message: '', pointsGained: 0, shieldsGained: 0, sideQuestCompleted: false, locked: false };
+        if (!sideQuest) return { ...empty, message: '未知支线' };
         if (!state.storyProgress.unlockedSideQuests.includes(sideQuestId)) {
-          return { message: '请先解锁该支线', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
+          return { ...empty, message: '请先解锁该支线' };
         }
         if (state.storyProgress.completedSideQuests.includes(sideQuestId)) {
-          return { message: '该支线已完成', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
+          return { ...empty, message: '该支线已完成' };
         }
 
-        const option = sideQuest.options.find(o => o.id === optionId);
-        if (!option) {
-          return { message: '未知选项', cost: 0, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
+        const stageIdx = state.storyProgress.sideQuestStage[sideQuestId] || 0;
+        const stage = sideQuest.stages[stageIdx];
+        if (!stage) {
+          // 已超出最后阶段，标记完成
+          set(s => ({
+            storyProgress: {
+              ...s.storyProgress,
+              completedSideQuests: s.storyProgress.completedSideQuests.includes(sideQuestId)
+                ? s.storyProgress.completedSideQuests
+                : [...s.storyProgress.completedSideQuests, sideQuestId],
+            },
+          }));
+          return { ...empty, message: '该支线已完成', sideQuestCompleted: true };
         }
 
-        if (state.userProfile.coins < option.cost) {
-          return { message: `金币不足，需要 ${option.cost} 金币`, cost: option.cost, coinsGained: 0, pointsGained: 0, shieldsGained: 0, doubleTurns: 0, sideQuestCompleted: false };
+        const progress = state.storyProgress.sideQuestTaskProgress[sideQuestId] || 0;
+        if (progress < stage.tasksRequired) {
+          return {
+            ...empty,
+            locked: true,
+            message: `还需完成 ${stage.tasksRequired - progress} 个任务，才能在「${sideQuest.title}」中做出选择`,
+          };
         }
 
-        // 支线：一旦选择任意选项即视为完成（避免无限刷）
-        const coinsGained = option.lootCoins || 0;
+        const option = stage.options.find(o => o.id === optionId);
+        if (!option) return { ...empty, message: '未知选项' };
+
         const pointsGained = option.wisdomPoints || 0;
         const shieldsGained = option.favorShields || 0;
-        const doubleTurns = option.fortuneTurns || 0;
+        const chapterId = sideQuest.chapterId;
+        const nextStageIdx = stageIdx + 1;
+        const sideQuestCompleted = nextStageIdx >= sideQuest.stages.length;
+        const message = `你在「${sideQuest.title}」· 第${stageIdx + 1}幕选择了「${option.label}」。${option.description}${sideQuestCompleted ? ' 支线至此落幕。' : ''}`;
 
-        const newCoins = state.userProfile.coins - option.cost + coinsGained;
         const newPoints = state.userProfile.totalPoints + pointsGained;
         const newLevel = getLevelByPoints(newPoints).level;
 
-        const chapterId = sideQuest.chapterId;
-        const message = `你在「${sideQuest.title}」中选择了「${option.label}」。${option.description}`;
-
-        set(s => ({
-          storyProgress: {
-            ...s.storyProgress,
-            completedSideQuests: [...s.storyProgress.completedSideQuests, sideQuestId],
-            usedSideQuestOptions: {
-              ...s.storyProgress.usedSideQuestOptions,
-              [sideQuestId]: [...(s.storyProgress.usedSideQuestOptions[sideQuestId] || []), option.id],
+        set(s => {
+          const sp = { ...s.storyProgress };
+          sp.usedSideQuestOptions = {
+            ...sp.usedSideQuestOptions,
+            [sideQuestId]: [...(sp.usedSideQuestOptions[sideQuestId] || []), option.id],
+          };
+          if (sideQuestCompleted) {
+            if (!sp.completedSideQuests.includes(sideQuestId)) {
+              sp.completedSideQuests = [...sp.completedSideQuests, sideQuestId];
+            }
+          } else {
+            sp.sideQuestStage = { ...sp.sideQuestStage, [sideQuestId]: nextStageIdx };
+            sp.sideQuestTaskProgress = { ...sp.sideQuestTaskProgress, [sideQuestId]: 0 };
+          }
+          return {
+            storyProgress: sp,
+            storyLogs: [...s.storyLogs, createLog(chapterId, message, 'story')],
+            userProfile: {
+              ...s.userProfile,
+              totalPoints: newPoints,
+              level: newLevel,
+              streakShields: s.userProfile.streakShields + shieldsGained,
             },
-          },
-          storyLogs: [...s.storyLogs, createLog(chapterId, message, 'story')],
-          userProfile: {
-            ...s.userProfile,
-            coins: newCoins,
-            totalPoints: newPoints,
-            level: newLevel,
-            streakShields: s.userProfile.streakShields + shieldsGained,
-            pendingCoinDoubleTurns: s.userProfile.pendingCoinDoubleTurns + doubleTurns,
-          },
-        }));
+          };
+        });
 
-        return { message, cost: option.cost, coinsGained, pointsGained, shieldsGained, doubleTurns, sideQuestCompleted: true };
+        return { message, pointsGained, shieldsGained, sideQuestCompleted, locked: false };
       },
     }),
     {
       name: 'quest-planner-storage',
-      version: 14,
+      version: 15,
       migrate: (persistedState: any, version: number) => {
         let state = { ...persistedState };
 
@@ -1511,6 +1523,49 @@ export const useStore = create<StoreState>()(
           // 清理已安装商店中的 bossSmash
           if (state.shopItems) {
             state.shopItems = state.shopItems.filter((i: any) => i.effect !== 'bossSmash');
+          }
+        }
+
+        // v14 -> v15: 移除冒险金币选项、支线改为多阶段并与任务进度关联；
+        //             任务新增 completedDates（日历统计）；便签统一改为深色配色
+        if (version < 15) {
+          // 1) 任务：用已有的 completedAt 回填 completedDates（用于日历统计）
+          if (state.tasks) {
+            state.tasks = state.tasks.map((t: any) => {
+              const completedDates = Array.isArray(t.completedDates) ? [...t.completedDates] : [];
+              if (t.completedAt) {
+                const d = toLocalDateStr(t.completedAt);
+                if (d && !completedDates.includes(d)) completedDates.push(d);
+              }
+              return { ...t, completedDates };
+            });
+          }
+          // 2) 故事进度：重置支线字段，并按已解锁章节重新解锁对应支线（旧支线结构已失效）
+          if (state.storyProgress) {
+            const sp = { ...state.storyProgress };
+            sp.sideQuestStage = {};
+            sp.sideQuestTaskProgress = {};
+            sp.completedSideQuests = [];
+            sp.usedSideQuestOptions = {};
+            sp.unlockedSideQuests = [];
+            sp.usedOptions = {}; // 章节选项已改版，清空使用记录让新选项可用
+            const unlocked: number[] = sp.unlockedChapters || [1];
+            for (const chId of unlocked) {
+              const ch = CHAPTERS.find(c => c.id === chId);
+              for (const q of ch?.sideQuests || []) {
+                sp.unlockedSideQuests.push(q.id);
+                sp.sideQuestStage[q.id] = 0;
+                sp.sideQuestTaskProgress[q.id] = 0;
+              }
+            }
+            state.storyProgress = sp;
+          }
+          // 3) 便签：把不在新深色色板中的旧浅色统一替换为默认深色，保证可读性
+          if (state.notes) {
+            state.notes = state.notes.map((n: any) => ({
+              ...n,
+              color: isKnownNoteColor(n.color) ? n.color : DEFAULT_NOTE_COLOR,
+            }));
           }
         }
 
